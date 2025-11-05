@@ -15,7 +15,10 @@ concurrency:
 
 permissions:
   contents: write
-  
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GIT_TOKEN  }}
+
 jobs:
   release-kine:
     runs-on: ubuntu-latest
@@ -32,7 +35,7 @@ jobs:
     - name: Validate and build image
       run: make ci
       env:
-        REPO: ${{ vars.REGISTRY_USER }}
+        REPO: ${{ vars.REPOSITORY }}
         TAG: ${{ github.sha }}
         VERSION: ${{ steps.extract_branch.outputs.branch }}
         COMMIT: ${{ github.sha }}
@@ -44,8 +47,8 @@ jobs:
         password: ${{ secrets.REGISTRY_TOKEN }}
     - name: Push image
       run: |
-        docker tag ${{ vars.REGISTRY_USER }}/kine:${{ github.sha }} ${{ vars.REGISTRY }}/${{ vars.REGISTRY_USER }}/kine:${{ steps.extract_branch.outputs.branch }}
-        docker push ${{ vars.REGISTRY }}/${{ vars.REGISTRY_USER }}/kine:${{ steps.extract_branch.outputs.branch }}
+        docker tag ${{ vars.REPOSITORY }}/kine:${{ github.sha }} ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/kine:${{ steps.extract_branch.outputs.branch }}
+        docker push ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/kine:${{ steps.extract_branch.outputs.branch }}
     - name: Create release
       if: ${{ !startsWith(github.ref, 'refs/heads/dev-') }}
       uses: mhmxs/milestone-release-action@main
@@ -57,7 +60,7 @@ jobs:
             ## Docker
 
             ```bash
-            docker pull ${{ vars.REGISTRY }}/${{ vars.REGISTRY_USER }}/kine:${{ steps.extract_branch.outputs.branch }}`
+            docker pull ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/kine:${{ steps.extract_branch.outputs.branch }}`
             ```
 
             ## Release Notes
