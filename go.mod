@@ -4,15 +4,15 @@ go 1.24.2
 
 toolchain go1.24.4
 
-replace go.etcd.io/etcd/api/v3 => github.com/mhmxs/etcd/api/v3 v3.0.0-20250827080453-475a298ac542
+replace go.etcd.io/etcd/api/v3 => github.com/HariKube/etcd/api/v3 v3.0.0-20250827080453-475a298ac542
 
-replace go.etcd.io/etcd/pkg/v3 => github.com/mhmxs/etcd/pkg/v3 v3.0.0-20250827080453-475a298ac542
+replace go.etcd.io/etcd/pkg/v3 => github.com/HariKube/etcd/pkg/v3 v3.0.0-20250827080453-475a298ac542
 
-replace go.etcd.io/etcd/client/pkg/v3 => github.com/mhmxs/etcd/client/pkg/v3 v3.0.0-20250827080453-475a298ac542
+replace go.etcd.io/etcd/client/pkg/v3 => github.com/HariKube/etcd/client/pkg/v3 v3.0.0-20250827080453-475a298ac542
 
-replace go.etcd.io/etcd/client/v3 => github.com/mhmxs/etcd/client/v3 v3.0.0-20250427201847-fa56db8d4bf3
+replace go.etcd.io/etcd/client/v3 => github.com/HariKube/etcd/client/v3 v3.0.0-20250827080453-475a298ac542
 
-replace go.etcd.io/etcd/server/v3 => github.com/mhmxs/etcd/server/v3 v3.0.0-20250827080453-475a298ac542
+replace go.etcd.io/etcd/server/v3 => github.com/HariKube/etcd/server/v3 v3.0.0-20250827080453-475a298ac542
 
 require (
 	github.com/Rican7/retry v0.3.1
