@@ -18,7 +18,7 @@ permissions:
   
 jobs:
   release-kine:
-    runs-on: linux-amd64
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
