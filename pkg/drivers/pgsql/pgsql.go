@@ -50,6 +50,24 @@ var (
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
 		`CREATE INDEX IF NOT EXISTS kine_list_query_index on kine(name, id DESC, deleted)`,
+		`CREATE TABLE IF NOT EXISTS kine_labels
+			(
+				kine_id BIGINT,
+				kine_name VARCHAR(253),
+				name VARCHAR(63),
+				value VARCHAR(63),
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_labels_name_index ON kine_labels (kine_name, name, value)`,
+		`CREATE TABLE IF NOT EXISTS kine_fields
+			(
+				kine_id BIGINT,
+				kine_name VARCHAR(253),
+				value JSONB,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_value_index ON kine_fields USING GIN (value)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine ALTER COLUMN id SET DATA TYPE BIGINT, ALTER COLUMN create_revision SET DATA TYPE BIGINT, ALTER COLUMN prev_revision SET DATA TYPE BIGINT; ALTER SEQUENCE kine_id_seq AS BIGINT`,
@@ -92,7 +110,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 			ORDER BY kv.name, theid DESC
 		) AS maxkv
 		WHERE
-			maxkv.deleted = 0 OR ?
+			(maxkv.deleted = 0 OR ?) %%%%s
 		ORDER BY maxkv.name, maxkv.theid DESC
 	`
 	listSQL := fmt.Sprintf(listFmt, columns)
@@ -111,8 +129,9 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 				%s
 			ORDER BY kv.name, theid DESC
 			) AS c
-		WHERE c.deleted = 0 OR ?
+		WHERE (c.deleted = 0 OR ?) %%s
 		`
+	dialect.SelectorLookupSQL = "value->>? LIKE CONCAT('%%', ?::TEXT, '%%')"
 	dialect.GetSizeSQL = `SELECT pg_total_relation_size('kine')`
 	dialect.CompactSQL = `
 		DELETE FROM kine AS kv

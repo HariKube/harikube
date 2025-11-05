@@ -40,6 +40,23 @@ var (
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_compact_rev_key_with_prev_revision_index ON kine(id, name, prev_revision) WHERE name != 'compact_rev_key' AND prev_revision != 0`,
+		`CREATE TABLE IF NOT EXISTS kine_labels
+			(
+				kine_id INTEGER,
+				kine_name INTEGER,
+				name TEXT,
+				value TEXT,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_labels_name_index ON kine_labels (kine_name, name, value)`,
+		`CREATE TABLE IF NOT EXISTS kine_fields
+			(
+				kine_id INTEGER,
+				kine_name INTEGER,
+				value JSON,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
 	}
 )
 
@@ -76,6 +93,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 		return nil, nil, err
 	}
 
+	dialect.SelectorLookupSQL = "json_extract(value, '$.%s') LIKE CONCAT('%%', ?, '%%')"
 	dialect.LastInsertID = true
 	dialect.GetSizeSQL = `SELECT (page_count - freelist_count) * page_size FROM pragma_page_count(), pragma_freelist_count(), pragma_page_size()`
 	dialect.CompactSQL = `
