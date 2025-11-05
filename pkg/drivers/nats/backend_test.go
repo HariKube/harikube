@@ -122,14 +122,14 @@ func TestBackend_Create(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 
-	srev, count, err := b.Count(ctx, "/", "", 0)
+	srev, count, err := b.Count(ctx, "/", "", 0, "", "")
 	noErr(t, err)
 	expEqual(t, 4, srev)
 	expEqual(t, 4, count)
 
 	time.Sleep(time.Second)
 
-	srev, count, err = b.Count(ctx, "/", "", 0)
+	srev, count, err = b.Count(ctx, "/", "", 0, "", "")
 	noErr(t, err)
 	expEqual(t, 4, srev)
 	expEqual(t, 3, count)
@@ -142,7 +142,7 @@ func TestBackend_Create(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 
-	srev, count, err = b.Count(ctx, "/", "", 0)
+	srev, count, err = b.Count(ctx, "/", "", 0, "", "")
 	noErr(t, err)
 	expEqual(t, 6, srev)
 	expEqual(t, 4, count)
@@ -297,28 +297,28 @@ func TestBackend_List(t *testing.T) {
 	time.Sleep(time.Millisecond)
 
 	// List the keys.
-	rev, ents, err := b.List(ctx, "/", "", 0, 0, false)
+	rev, ents, err := b.List(ctx, "/", "", 0, 0, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 7, len(ents))
 	expSortedKeys(t, ents)
 
 	// List the keys with prefix.
-	rev, ents, err = b.List(ctx, "/a", "", 0, 0, false)
+	rev, ents, err = b.List(ctx, "/a", "", 0, 0, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 3, len(ents))
 	expSortedKeys(t, ents)
 
 	// List the keys >= start key.
-	rev, ents, err = b.List(ctx, "/", "b", 0, 0, false)
+	rev, ents, err = b.List(ctx, "/", "b", 0, 0, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 4, len(ents))
 	expSortedKeys(t, ents)
 
 	// List the keys up to a revision.
-	rev, ents, err = b.List(ctx, "/", "", 0, 3, false)
+	rev, ents, err = b.List(ctx, "/", "", 0, 3, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 3, len(ents))
@@ -326,7 +326,7 @@ func TestBackend_List(t *testing.T) {
 	expEqualKeys(t, []string{"/a", "/a/b/c", "/b"}, ents)
 
 	// List the keys with a limit.
-	rev, ents, err = b.List(ctx, "/", "", 4, 0, false)
+	rev, ents, err = b.List(ctx, "/", "", 4, 0, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 4, len(ents))
@@ -334,7 +334,7 @@ func TestBackend_List(t *testing.T) {
 	expEqualKeys(t, []string{"/a", "/a/b", "/a/b/c", "/b"}, ents)
 
 	// List the keys with a limit after some start key.
-	rev, ents, err = b.List(ctx, "/", "b", 2, 0, false)
+	rev, ents, err = b.List(ctx, "/", "b", 2, 0, false, "", "")
 	noErr(t, err)
 	expEqual(t, 7, rev)
 	expEqual(t, 2, len(ents))
@@ -358,7 +358,7 @@ func TestBackend_Watch(t *testing.T) {
 	b.Delete(ctx, "/a", rev1)
 	b.Update(ctx, "/a/1", nil, rev2, 0)
 
-	wr := b.Watch(cctx, "/a", 0)
+	wr := b.Watch(cctx, "/a", 0, "", "")
 	time.Sleep(20 * time.Millisecond)
 	cancel()
 

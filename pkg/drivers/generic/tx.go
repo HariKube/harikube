@@ -3,16 +3,26 @@ package generic
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/k3s-io/kine/pkg/metrics"
 	"github.com/k3s-io/kine/pkg/server"
 	"github.com/k3s-io/kine/pkg/util"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // explicit interface check
 var _ server.Transaction = (*Tx)(nil)
+
+type generic interface {
+	execute(context.Context, string, ...interface{}) (sql.Result, error)
+	query(context.Context, string, ...interface{}) (*sql.Rows, error)
+	queryRow(context.Context, string, ...interface{}) *sql.Row
+}
 
 type Tx struct {
 	x *sql.Tx
@@ -121,4 +131,52 @@ func (t *Tx) execute(ctx context.Context, sql string, args ...interface{}) (resu
 		metrics.ObserveSQL(startTime, t.d.ErrCode(err), util.Stripped(sql), args)
 	}()
 	return t.x.ExecContext(ctx, sql, args...)
+}
+
+//nolint:revive
+func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runtime.Object, labels map[string]string, fieldsSet fields.Set, delete bool, createRevision, previousRevision int64) (err error) {
+	metadataSQLs := []struct {
+		sql  string
+		args []any
+	}{}
+
+	if !delete {
+		for k, v := range labels {
+			metadataSQLs = append(metadataSQLs, struct {
+				sql  string
+				args []any
+			}{
+				sql:  t.d.InsertLabelSQL,
+				args: []any{id, key, k, v},
+			})
+		}
+
+		if len(fieldsSet) != 0 {
+			fieldsMap := map[string]string{}
+			for k, v := range fieldsSet {
+				fieldsMap[strings.ReplaceAll(k, ".", "_")] = v
+			}
+
+			var jsonData string
+			if jsonData, err = jsoniter.MarshalToString(fieldsMap); err != nil {
+				return err
+			}
+
+			metadataSQLs = append(metadataSQLs, struct {
+				sql  string
+				args []any
+			}{
+				sql:  t.d.InsertFieldsSQL,
+				args: []any{id, key, jsonData},
+			})
+		}
+	}
+
+	for _, meta := range metadataSQLs {
+		if _, err = t.execute(ctx, meta.sql, meta.args...); err != nil {
+			return err
+		}
+	}
+
+	return
 }
