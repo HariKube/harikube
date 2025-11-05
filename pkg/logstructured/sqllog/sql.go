@@ -343,7 +343,7 @@ func (s *SQLLog) After(ctx context.Context, prefix string, revision, limit int64
 	return rev, result, err
 }
 
-func (s *SQLLog) List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted, keysOnly bool) (int64, server.Events, error) {
+func (s *SQLLog) List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (int64, server.Events, error) {
 	var (
 		rows *sql.Rows
 		err  error
@@ -352,9 +352,9 @@ func (s *SQLLog) List(ctx context.Context, prefix, startKey string, limit, revis
 	startKey = s.d.TranslateStartKey(startKey)
 
 	if revision == 0 {
-		rows, err = s.d.ListCurrent(ctx, prefix, startKey, limit, includeDeleted, keysOnly)
+		rows, err = s.d.ListCurrent(ctx, prefix, startKey, limit, includeDeleted, keysOnly, labelSelector, fieldSelector)
 	} else {
-		rows, err = s.d.List(ctx, prefix, startKey, limit, revision, includeDeleted, keysOnly)
+		rows, err = s.d.List(ctx, prefix, startKey, limit, revision, includeDeleted, keysOnly, labelSelector, fieldSelector)
 	}
 	if err != nil {
 		return 0, nil, err
@@ -415,7 +415,7 @@ func RowsToEvents(rows *sql.Rows, val, prev bool) (int64, int64, server.Events, 
 	return rev, compact, result, nil
 }
 
-func (s *SQLLog) Watch(ctx context.Context, prefix string) <-chan server.Events {
+func (s *SQLLog) Watch(ctx context.Context, prefix string, _, _ string) <-chan server.Events {
 	res := make(chan server.Events, 100)
 	values, err := s.broadcaster.Subscribe(ctx, s.startWatch)
 	if err != nil {
@@ -604,7 +604,7 @@ func canSkipRevision(rev, skip int64, skipTime time.Time) bool {
 	return rev == skip && time.Since(skipTime) > time.Second
 }
 
-func (s *SQLLog) Count(ctx context.Context, prefix, startKey string, revision int64) (int64, int64, error) {
+func (s *SQLLog) Count(ctx context.Context, prefix, startKey string, revision int64, labelSelector, fieldSelector string) (int64, int64, error) {
 	if strings.HasSuffix(prefix, "/") {
 		prefix += "%"
 	}
@@ -612,9 +612,9 @@ func (s *SQLLog) Count(ctx context.Context, prefix, startKey string, revision in
 	startKey = s.d.TranslateStartKey(startKey)
 
 	if revision == 0 {
-		return s.d.CountCurrent(ctx, prefix, startKey)
+		return s.d.CountCurrent(ctx, prefix, startKey, labelSelector, fieldSelector)
 	}
-	return s.d.Count(ctx, prefix, startKey, revision)
+	return s.d.Count(ctx, prefix, startKey, revision, labelSelector, fieldSelector)
 }
 
 func (s *SQLLog) Append(ctx context.Context, event *server.Event) (int64, error) {

@@ -54,8 +54,8 @@ var (
 				GROUP BY mkv.name) AS maxkv
 				ON maxkv.id = kv.id
 			WHERE
-				kv.deleted = 0 OR
-				?
+				(kv.deleted = 0 OR
+				?) %%%%s
 		) AS lkv
 		ORDER BY lkv.thename ASC
 		`
@@ -77,6 +77,10 @@ type ConnectionPoolConfig struct {
 
 type Generic struct {
 	sync.Mutex
+
+	InsertLabelSQL    string
+	InsertFieldsSQL   string
+	SelectorLookupSQL string
 
 	LockWrites              bool
 	LastInsertID            bool
@@ -215,6 +219,11 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 	}
 
 	return &Generic{
+		InsertLabelSQL: q(`INSERT INTO kine_labels(kine_id, kine_name, name, value)
+			values(?, ?, ?, ?)`, paramCharacter, numbered),
+		InsertFieldsSQL: q(`INSERT INTO kine_fields(kine_id, kine_name, value)
+			values(?, ?, ?)`, paramCharacter, numbered),
+
 		DB: db,
 
 		GetCurrentSQL:           q(fmt.Sprintf(listSQL, "AND mkv.name >= ?"), paramCharacter, numbered),
@@ -343,62 +352,156 @@ func (d *Generic) DeleteRevision(ctx context.Context, revision int64) error {
 	return err
 }
 
-func (d *Generic) ListCurrent(ctx context.Context, prefix, startKey string, limit int64, includeDeleted, keysOnly bool) (*sql.Rows, error) {
+func (d *Generic) ListCurrent(ctx context.Context, prefix, startKey string, limit int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (*sql.Rows, error) {
+	args := []any{
+		prefix,
+		startKey,
+		includeDeleted,
+	}
+
+	var selectors string
+	if labelSelector != "" || fieldSelector != "" {
+		sql := d.GetCurrentSQL
+		if !keysOnly {
+			sql = d.GetCurrentValSQL
+		}
+		var err error
+		selectors, args, err = renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector, args, d.SelectorLookupSQL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var sql string
 	if keysOnly {
-		sql = d.GetCurrentSQL
+		sql = fmt.Sprintf(d.GetCurrentSQL, selectors)
 	} else {
-		sql = d.GetCurrentValSQL
+		sql = fmt.Sprintf(d.GetCurrentValSQL, selectors)
 	}
 	if limit > 0 {
 		sql = fmt.Sprintf("%s LIMIT %d", sql, limit)
 	}
-	return d.query(ctx, sql, prefix, startKey, includeDeleted)
+	return d.query(ctx, sql, args...)
 }
 
-func (d *Generic) List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted, keysOnly bool) (*sql.Rows, error) {
+func (d *Generic) List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (*sql.Rows, error) {
 	var sql string
 	if startKey == "" {
+		args := []any{
+			prefix,
+			revision,
+			includeDeleted,
+		}
+
+		var selectors string
+		if labelSelector != "" || fieldSelector != "" {
+			sql := d.ListRevisionStartSQL
+			if !keysOnly {
+				sql = d.ListRevisionStartValSQL
+			}
+			var err error
+			selectors, args, err = renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector, args, d.SelectorLookupSQL)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		if keysOnly {
-			sql = d.ListRevisionStartSQL
+			sql = fmt.Sprintf(d.ListRevisionStartSQL, selectors)
 		} else {
-			sql = d.ListRevisionStartValSQL
+			sql = fmt.Sprintf(d.ListRevisionStartValSQL, selectors)
 		}
 		if limit > 0 {
 			sql = fmt.Sprintf("%s LIMIT %d", sql, limit)
 		}
-		return d.query(ctx, sql, prefix, revision, includeDeleted)
+
+		return d.query(ctx, sql, args...)
+	}
+
+	args := []any{
+		prefix,
+		startKey,
+		revision,
+		includeDeleted,
+	}
+
+	var selectors string
+	if labelSelector != "" || fieldSelector != "" {
+		sql := d.GetRevisionAfterSQL
+		if !keysOnly {
+			sql = d.GetRevisionAfterValSQL
+		}
+		var err error
+		selectors, args, err = renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector, args, d.SelectorLookupSQL)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if keysOnly {
-		sql = d.GetRevisionAfterSQL
+		sql = fmt.Sprintf(d.GetRevisionAfterSQL, selectors)
 	} else {
-		sql = d.GetRevisionAfterValSQL
+		sql = fmt.Sprintf(d.GetRevisionAfterValSQL, selectors)
 	}
 	if limit > 0 {
 		sql = fmt.Sprintf("%s LIMIT %d", sql, limit)
 	}
-	return d.query(ctx, sql, prefix, startKey, revision, includeDeleted)
+	return d.query(ctx, sql, args...)
 }
 
-func (d *Generic) CountCurrent(ctx context.Context, prefix, startKey string) (int64, int64, error) {
+func (d *Generic) CountCurrent(ctx context.Context, prefix, startKey string, labelSelector, fieldSelector string) (int64, int64, error) {
 	var (
 		rev sql.NullInt64
 		id  int64
 	)
 
-	row := d.queryRow(ctx, d.CountCurrentSQL, prefix, startKey, false)
+	args := []any{
+		prefix,
+		startKey,
+		false,
+	}
+
+	var selectors string
+	if labelSelector != "" || fieldSelector != "" {
+		var err error
+		selectors, args, err = renderSelectorsWhere(d.CountCurrentSQL, prefix, labelSelector, fieldSelector, args, d.SelectorLookupSQL)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+
+	sql := fmt.Sprintf(d.CountCurrentSQL, selectors)
+
+	row := d.queryRow(ctx, sql, args...)
 	err := row.Scan(&rev, &id)
 	return rev.Int64, id, err
 }
 
-func (d *Generic) Count(ctx context.Context, prefix, startKey string, revision int64) (int64, int64, error) {
+func (d *Generic) Count(ctx context.Context, prefix, startKey string, revision int64, labelSelector, fieldSelector string) (int64, int64, error) {
 	var (
 		rev sql.NullInt64
 		id  int64
 	)
 
-	row := d.queryRow(ctx, d.CountRevisionSQL, prefix, startKey, revision, false)
+	args := []any{
+		prefix,
+		startKey,
+		revision,
+		false,
+	}
+
+	var selectors string
+	if labelSelector != "" || fieldSelector != "" {
+		var err error
+		selectors, args, err = renderSelectorsWhere(d.CountRevisionSQL, prefix, labelSelector, fieldSelector, args, d.SelectorLookupSQL)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+
+	sql := fmt.Sprintf(d.CountRevisionSQL, selectors)
+
+	row := d.queryRow(ctx, sql, args...)
 	err := row.Scan(&rev, &id)
 	return rev.Int64, id, err
 }
@@ -440,6 +543,44 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 		}()
 	}
 
+	var g generic = d
+	obj, labels, fieldsSet, dErr := decodeObject(key, value)
+	if dErr != nil {
+		err = dErr
+
+		return
+	}
+
+	if len(labels) > 0 || !fieldsSet.AsSelector().Empty() || delete {
+		t, tbErr := d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+		if tbErr != nil {
+			err = tbErr
+
+			return
+		}
+
+		g = t.(generic)
+		defer func() {
+			if err != nil {
+				if rbErr := t.Rollback(); rbErr != nil {
+					err = errors.Join(err, rbErr)
+				}
+
+				return
+			}
+
+			if err = t.InsertMetadata(ctx, id, key, obj, labels, fieldsSet, delete, createRevision, previousRevision); err != nil {
+				id = 0
+
+				return
+			}
+
+			if err = t.Commit(); err != nil {
+				id = 0
+			}
+		}()
+	}
+
 	cVal := 0
 	dVal := 0
 	if create {
@@ -450,7 +591,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	if d.LastInsertID {
-		row, err := d.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
+		row, err := g.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		if err != nil {
 			return 0, err
 		}
@@ -464,7 +605,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	// duplicate key error to the client.
 	wait := strategy.Backoff(backoff.Linear(100 + time.Millisecond))
 	for i := uint(0); i < 20; i++ {
-		row := d.queryRow(ctx, d.InsertSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
+		row := g.queryRow(ctx, d.InsertSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		err = row.Scan(&id)
 
 		if err != nil && d.InsertRetry != nil && d.InsertRetry(err) {
@@ -474,7 +615,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 			continue
 		}
 
-		if err != nil {
+		if err != nil && (d.TranslateErr == nil || d.TranslateErr(err) != server.ErrKeyExists) {
 			metrics.InsertErrorsTotal.WithLabelValues("false").Inc()
 			logrus.WithField("key", key).WithField("createRevision", createRevision).WithField("previousRevision", previousRevision).Errorf("insert error for key %v: %v", key, err)
 		}
