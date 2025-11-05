@@ -35,6 +35,8 @@ linters:
         - {name: unused-receiver, disabled: true}
         - {name: use-waitgroup-go, disabled: true}
         - {name: var-naming, disabled: true}
+        - {name: use-any, disabled: true}
+        - {name: argument-limit, arguments: 10}
   exclusions:
     generated: lax
     paths:

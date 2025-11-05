@@ -21,7 +21,7 @@ func (l *LimitedServer) list(ctx context.Context, r *etcdserverpb.RangeRequest) 
 	}
 
 	if r.CountOnly {
-		rev, count, err := l.backend.Count(ctx, key, end, revision)
+		rev, count, err := l.backend.Count(ctx, key, end, revision, r.LabelSelector, r.FieldSelector)
 		resp := &RangeResponse{
 			Header: txnHeader(rev),
 			Count:  count,
@@ -35,8 +35,8 @@ func (l *LimitedServer) list(ctx context.Context, r *etcdserverpb.RangeRequest) 
 		limit++
 	}
 
-	rev, kvs, err := l.backend.List(ctx, key, end, limit, revision, r.KeysOnly)
-	logrus.Tracef("LIST key=%s, end=%s, revision=%d, currentRev=%d count=%d, limit=%d, keysOnly=%v", key, end, revision, rev, len(kvs), r.Limit, r.KeysOnly)
+	rev, kvs, err := l.backend.List(ctx, key, end, limit, revision, r.KeysOnly, r.LabelSelector, r.FieldSelector)
+	logrus.Tracef("LIST key=%s, end=%s, revision=%d, currentRev=%d count=%d, limit=%d, keysOnly=%v, labelSelector=%s, fieldSelector=%s", key, end, revision, rev, len(kvs), r.Limit, r.KeysOnly, r.LabelSelector, r.FieldSelector)
 	resp := &RangeResponse{
 		Header: txnHeader(rev),
 		Count:  int64(len(kvs)),
@@ -52,7 +52,7 @@ func (l *LimitedServer) list(ctx context.Context, r *etcdserverpb.RangeRequest) 
 			revision = rev
 		}
 
-		rev, resp.Count, err = l.backend.Count(ctx, key, end, revision)
+		rev, resp.Count, err = l.backend.Count(ctx, key, end, revision, r.LabelSelector, r.FieldSelector)
 		logrus.Tracef("LIST COUNT key=%s, end=%s, revision=%d, currentRev=%d count=%d", key, end, revision, rev, resp.Count)
 		resp.Header = txnHeader(rev)
 	}

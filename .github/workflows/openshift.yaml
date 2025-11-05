@@ -1,0 +1,53 @@
+name: OpenShift Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  
+jobs:
+  openshift-test:
+    name: OpenShift Test
+    if: contains(github.event.head_commit.message, '+OS')
+    runs-on: self-hosted
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        include:
+        - crcVersion: 2.62.0
+          osPreset: microshift
+          osVersion: 4.22.0
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Create pull secret
+        env:
+          PULL_SECRET: ${{ secrets.PULL_SECRET }}
+        run: |
+          printf '%s' "$PULL_SECRET" > test/openshift/.crc_pull_secret
+
+      - name: OpenShift Setup Tests
+        run: devbox run make -C test/openshift deps build setup-test _load _deploy
+        env:
+          TAG: openshift
+          CRC_VERSION: ${{ matrix.crcVersion }}
+          OS_PRESET: ${{ matrix.osPreset }}
+          OS_VERSION: ${{ matrix.osVersion }}
+
+      - name: OpenShift Test
+        run: devbox run make -C test/openshift test
+
+      - name: OpenShift Cleanup Tests
+        if: always()
+        run: devbox run make -C test/openshift cleanup-test
+

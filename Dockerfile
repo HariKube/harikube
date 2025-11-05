@@ -49,13 +49,21 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM scratch AS binary
 COPY --from=build /go/src/github.com/k3s-io/kine/bin /bin
 
-FROM alpine:3.24 AS package
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS package
 ARG NOCGO
+LABEL name="HariKube"
+LABEL vendor="inspirNation Bt."
+LABEL version="0.16.3"
+LABEL release="0"
+LABEL summary="HariKube Kubernetes Hyper-scaler"
+LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."
+LABEL maintainer="richard.kovacs@harikube.com"
+COPY LICENSE /licenses/LICENSE
 COPY --from=build /go/src/github.com/k3s-io/kine/bin/kine${NOCGO} /bin/kine
-RUN mkdir /db && chown nobody /db
+RUN mkdir /db && chown 65534 /db
 VOLUME /db
 EXPOSE 2379/tcp
-USER nobody
+USER 65534
 ENTRYPOINT ["/bin/kine"]
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
@@ -87,16 +95,24 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM scratch AS multi-arch-binary
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin /
 
-FROM alpine:3.24 AS multi-arch-package
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/ubi-micro:latest AS multi-arch-package
+LABEL name="HariKube"
+LABEL vendor="inspirNation Bt."
+LABEL version="0.16.3"
+LABEL release="0"
+LABEL summary="HariKube Kubernetes Hyper-scaler"
+LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."
+LABEL maintainer="richard.kovacs@harikube.com"
 ARG TARGETARCH
 ARG NOCGO
 ENV ARCH=${TARGETARCH}
 RUN if [ "${TARGETARCH}" == "arm/v7" ]; then \
     ARCH=arm; \
     fi
+COPY LICENSE /licenses/LICENSE
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin/kine-${ARCH}${NOCGO} /bin/kine
-RUN mkdir /db && chown nobody /db
+RUN mkdir /db && chown 65534 /db
 VOLUME /db
 EXPOSE 2379/tcp
-USER nobody
+USER 65534
 ENTRYPOINT ["/bin/kine"]

@@ -183,7 +183,7 @@ func (m *Memory) logIndexAfter(rev int64) int {
 
 // Get returns the current revision and the KeyValue for the given key.
 func (m *Memory) Get(ctx context.Context, key string, revision int64, keysOnly bool) (int64, *server.KeyValue, error) {
-	rev, kvs, err := m.List(ctx, key, "", 1, revision, keysOnly)
+	rev, kvs, err := m.List(ctx, key, "", 1, revision, keysOnly, "", "")
 	if err != nil {
 		return rev, nil, err
 	}
@@ -273,7 +273,7 @@ func (m *Memory) Delete(ctx context.Context, key string, revision int64) (int64,
 	return rev, latest.toKeyValue(), true, nil
 }
 
-func (m *Memory) List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool) (int64, []*server.KeyValue, error) {
+func (m *Memory) List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool, _, _ string) (int64, []*server.KeyValue, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -326,15 +326,15 @@ func (m *Memory) List(ctx context.Context, key, end string, limit, revision int6
 	return rev, kvs, nil
 }
 
-func (m *Memory) Count(ctx context.Context, key, end string, revision int64) (int64, int64, error) {
-	rev, kvs, err := m.List(ctx, key, end, 0, revision, true)
+func (m *Memory) Count(ctx context.Context, key, end string, revision int64, _, _ string) (int64, int64, error) {
+	rev, kvs, err := m.List(ctx, key, end, 0, revision, true, "", "")
 	if err != nil {
 		return rev, 0, err
 	}
 	return rev, int64(len(kvs)), nil
 }
 
-func (m *Memory) Watch(ctx context.Context, key, end string, startRevision int64) server.WatchResult {
+func (m *Memory) Watch(ctx context.Context, key, end string, startRevision int64, _, _ string) server.WatchResult {
 	m.mu.RLock()
 	compactRev := m.compactRevision
 	m.mu.RUnlock()

@@ -1,0 +1,12 @@
+name = "openshift"
+engineVersion = "v1.0.0-beta.3"
+runtime.source = "dang"
+include = ["!tests"]
+
+[[dependencies]]
+name = "preflight"
+source = ".dagger/modules/preflight"
+
+[[dependencies]]
+name = "chart-verifier"
+source = ".dagger/modules/chart-verifier"

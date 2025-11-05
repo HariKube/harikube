@@ -338,7 +338,7 @@ func (s *SQLLog) After(ctx context.Context, key, end string, revision, limit int
 	return rev, result, err
 }
 
-func (s *SQLLog) List(ctx context.Context, key, end string, limit, revision int64, includeDeleted, keysOnly bool) (int64, server.Events, error) {
+func (s *SQLLog) List(ctx context.Context, key, end string, limit, revision int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (int64, server.Events, error) {
 	var (
 		rows *sql.Rows
 		err  error
@@ -347,9 +347,9 @@ func (s *SQLLog) List(ctx context.Context, key, end string, limit, revision int6
 	key = s.d.TranslateStartKey(key)
 
 	if revision == 0 {
-		rows, err = s.d.ListCurrent(ctx, key, end, limit, includeDeleted, keysOnly)
+		rows, err = s.d.ListCurrent(ctx, key, end, limit, includeDeleted, keysOnly, labelSelector, fieldSelector)
 	} else {
-		rows, err = s.d.List(ctx, key, end, limit, revision, includeDeleted, keysOnly)
+		rows, err = s.d.List(ctx, key, end, limit, revision, includeDeleted, keysOnly, labelSelector, fieldSelector)
 	}
 	if err != nil {
 		return 0, nil, err
@@ -410,7 +410,7 @@ func RowsToEvents(rows *sql.Rows, val, prev bool) (int64, int64, server.Events, 
 	return rev, compact, result, nil
 }
 
-func (s *SQLLog) Watch(ctx context.Context, key, end string) <-chan server.Events {
+func (s *SQLLog) Watch(ctx context.Context, key, end string, labelSelector, fieldSelector string) <-chan server.Events {
 	res := make(chan server.Events, 100)
 	values, err := s.broadcaster.Subscribe(ctx, s.startWatch)
 	if err != nil {
@@ -420,7 +420,7 @@ func (s *SQLLog) Watch(ctx context.Context, key, end string) <-chan server.Event
 	go func() {
 		defer close(res)
 		for i := range values {
-			if events, ok := filter(i, key, end); ok {
+			if events, ok := filter(i, key, end, labelSelector, fieldSelector); ok {
 				res <- events
 			}
 		}
@@ -429,7 +429,7 @@ func (s *SQLLog) Watch(ctx context.Context, key, end string) <-chan server.Event
 	return res
 }
 
-func filter(events server.Events, key, end string) (server.Events, bool) {
+func filter(events server.Events, key, end string, labelSelector, fieldSelector string) (server.Events, bool) {
 	// optimization: do not allocate a new Events slice to filter into if there is only a single entry
 	if len(events) == 1 {
 		if events[0].InRange(key, end) {
@@ -441,7 +441,11 @@ func filter(events server.Events, key, end string) (server.Events, bool) {
 	filteredEvents := make(server.Events, 0, len(events))
 	for _, event := range events {
 		if event.InRange(key, end) {
-			filteredEvents = append(filteredEvents, event)
+			if filterEventBySelectors(event.KV, labelSelector, fieldSelector) {
+				filteredEvents = append(filteredEvents, event)
+			} else if event.PrevKV != nil && filterEventBySelectors(event.PrevKV, labelSelector, fieldSelector) {
+				filteredEvents = append(filteredEvents, event)
+			}
 		}
 	}
 
@@ -614,14 +618,14 @@ func canSkipRevision(rev, skip int64, skipTime time.Time) bool {
 	return rev == skip && time.Since(skipTime) > time.Second
 }
 
-func (s *SQLLog) Count(ctx context.Context, key, end string, revision int64) (int64, int64, error) {
+func (s *SQLLog) Count(ctx context.Context, key, end string, revision int64, labelSelector, fieldSelector string) (int64, int64, error) {
 	key = s.d.TranslateStartKey(key)
 
 	if revision == 0 {
-		return s.d.CountCurrent(ctx, key, end)
+		return s.d.CountCurrent(ctx, key, end, labelSelector, fieldSelector)
 	}
 
-	rev, compact, rows, err := s.d.Count(ctx, key, end, revision)
+	rev, compact, rows, err := s.d.Count(ctx, key, end, revision, labelSelector, fieldSelector)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -651,6 +655,7 @@ func (s *SQLLog) Append(ctx context.Context, event *server.Event) (int64, error)
 		e.PrevKV.ModRevision,
 		e.KV.Lease,
 		e.KV.Value,
+		e.PrevKV.Value,
 	)
 	if err != nil {
 		return 0, err
