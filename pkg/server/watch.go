@@ -124,7 +124,7 @@ func (w *watcher) Start(ctx context.Context, r *etcdserverpb.WatchCreateRequest)
 			return
 		}
 
-		wr := w.backend.Watch(ctx, key, startRevision)
+		wr := w.backend.Watch(ctx, key, startRevision, r.LabelSelector, r.FieldSelector)
 
 		// If the watch result has a non-zero CompactRevision, then the watch request failed due to
 		// the requested start revision having been compacted.  Pass the current and and compact

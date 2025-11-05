@@ -2,7 +2,11 @@ package server
 
 import (
 	"context"
+	"errors"
+	"strings"
+	"time"
 
+	"github.com/k3s-io/kine/pkg/util"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
@@ -36,6 +40,18 @@ func (l *LimitedServer) create(ctx context.Context, put *etcdserverpb.PutRequest
 		}, nil
 	} else if err != nil {
 		return nil, err
+	}
+
+	if strings.HasPrefix(string(put.Key), "/registry/apiextensions.k8s.io/customresourcedefinitions/") {
+		if err = util.RegisterCustomResourceDefinition(put.Value); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			var delErr error
+			rev, _, _, delErr = l.backend.Delete(ctx, string(put.Key), 0)
+			cancel()
+			if delErr != nil {
+				return nil, errors.Join(err, delErr)
+			}
+		}
 	}
 
 	return &etcdserverpb.TxnResponse{

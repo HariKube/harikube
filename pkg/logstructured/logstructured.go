@@ -21,10 +21,10 @@ type Log interface {
 	Start(ctx context.Context) error
 	CompactRevision(ctx context.Context) (int64, error)
 	CurrentRevision(ctx context.Context) (int64, error)
-	List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeletes, keysOnly bool) (int64, server.Events, error)
-	Count(ctx context.Context, prefix, startKey string, revision int64) (int64, int64, error)
+	List(ctx context.Context, prefix, startKey string, limit, revision int64, includeDeletes, keysOnly bool, labelSelector, fieldSelector string) (int64, server.Events, error)
+	Count(ctx context.Context, prefix, startKey string, revision int64, labelSelector, fieldSelector string) (int64, int64, error)
 	After(ctx context.Context, prefix string, revision, limit int64) (int64, server.Events, error)
-	Watch(ctx context.Context, prefix string) <-chan server.Events
+	Watch(ctx context.Context, prefix string, labelSelector, fieldSelector string) <-chan server.Events
 	Append(ctx context.Context, event *server.Event) (int64, error)
 	DbSize(ctx context.Context) (int64, error)
 	Compact(ctx context.Context, revision int64) (int64, error)
@@ -66,15 +66,15 @@ func (l *LogStructured) Get(ctx context.Context, key, rangeEnd string, limit, re
 		logrus.Tracef("GET %s, rev=%d => rev=%d, kv=%v, err=%v", key, revision, revRet, kvRet != nil, errRet)
 	}()
 
-	rev, event, err := l.get(ctx, key, rangeEnd, limit, revision, false, keysOnly)
+	rev, event, err := l.get(ctx, key, rangeEnd, limit, revision, false, keysOnly, "", "")
 	if event == nil {
 		return rev, nil, err
 	}
 	return rev, event.KV, err
 }
 
-func (l *LogStructured) get(ctx context.Context, key, rangeEnd string, limit, revision int64, includeDeletes, keysOnly bool) (int64, *server.Event, error) {
-	rev, events, err := l.log.List(ctx, strings.ReplaceAll(key, `_`, `^_`), rangeEnd, limit, revision, includeDeletes, keysOnly)
+func (l *LogStructured) get(ctx context.Context, key, rangeEnd string, limit, revision int64, includeDeletes, keysOnly bool, labelSelector, fieldSelector string) (int64, *server.Event, error) {
+	rev, events, err := l.log.List(ctx, strings.ReplaceAll(key, `_`, `^_`), rangeEnd, limit, revision, includeDeletes, keysOnly, labelSelector, fieldSelector)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -100,7 +100,7 @@ func (l *LogStructured) Create(ctx context.Context, key string, value []byte, le
 		logrus.Tracef("CREATE %s, size=%d, lease=%d => rev=%d, err=%v", key, len(value), lease, revRet, errRet)
 	}()
 
-	rev, prevEvent, err := l.get(ctx, key, "", 1, 0, true, false)
+	rev, prevEvent, err := l.get(ctx, key, "", 1, 0, true, false, "", "")
 	if err != nil {
 		return 0, err
 	}
@@ -132,7 +132,7 @@ func (l *LogStructured) Delete(ctx context.Context, key string, revision int64) 
 		logrus.Tracef("DELETE %s, rev=%d => rev=%d, kv=%v, deleted=%v, err=%v", key, revision, revRet, kvRet != nil, deletedRet, errRet)
 	}()
 
-	rev, event, err := l.get(ctx, key, "", 1, 0, true, false)
+	rev, event, err := l.get(ctx, key, "", 1, 0, true, false, "", "")
 	if err != nil {
 		return 0, nil, false, err
 	}
@@ -159,7 +159,7 @@ func (l *LogStructured) Delete(ctx context.Context, key string, revision int64) 
 	if err != nil {
 		// If error on Append we assume it's a UNIQUE constraint error, so we fetch the latest (if we can)
 		// and return that the delete failed
-		latestRev, latestEvent, latestErr := l.get(ctx, key, "", 1, 0, true, false)
+		latestRev, latestEvent, latestErr := l.get(ctx, key, "", 1, 0, true, false, "", "")
 		if latestErr != nil || latestEvent == nil {
 			return rev, event.KV, false, nil
 		}
@@ -168,7 +168,7 @@ func (l *LogStructured) Delete(ctx context.Context, key string, revision int64) 
 	return rev, event.KV, true, err
 }
 
-func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit, revision int64, keysOnly bool) (revRet int64, kvRet []*server.KeyValue, errRet error) {
+func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit, revision int64, keysOnly bool, labelSelector, fieldSelector string) (revRet int64, kvRet []*server.KeyValue, errRet error) {
 	defer func() {
 		logrus.Tracef("LIST %s, start=%s, limit=%d, rev=%d => rev=%d, kvs=%d, err=%v", prefix, startKey, limit, revision, revRet, len(kvRet), errRet)
 	}()
@@ -185,7 +185,7 @@ func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit
 		startKey = ""
 	}
 
-	rev, events, err := l.log.List(ctx, strings.ReplaceAll(prefix, `_`, `^_`), startKey, limit, revision, false, keysOnly)
+	rev, events, err := l.log.List(ctx, strings.ReplaceAll(prefix, `_`, `^_`), startKey, limit, revision, false, keysOnly, labelSelector, fieldSelector)
 	if err != nil {
 		return rev, nil, err
 	}
@@ -198,7 +198,7 @@ func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit
 		if err != nil {
 			return currentRev, nil, err
 		}
-		return l.List(ctx, prefix, startKey, limit, currentRev, keysOnly)
+		return l.List(ctx, prefix, startKey, limit, currentRev, keysOnly, labelSelector, fieldSelector)
 	}
 
 	kvs := make([]*server.KeyValue, 0, len(events))
@@ -208,11 +208,11 @@ func (l *LogStructured) List(ctx context.Context, prefix, startKey string, limit
 	return rev, kvs, nil
 }
 
-func (l *LogStructured) Count(ctx context.Context, prefix, startKey string, revision int64) (revRet int64, count int64, err error) {
+func (l *LogStructured) Count(ctx context.Context, prefix, startKey string, revision int64, labelSelector, fieldSelector string) (revRet int64, count int64, err error) {
 	defer func() {
 		logrus.Tracef("COUNT %s, rev=%d => rev=%d, count=%d, err=%v", prefix, revision, revRet, count, err)
 	}()
-	rev, count, err := l.log.Count(ctx, prefix, startKey, revision)
+	rev, count, err := l.log.Count(ctx, prefix, startKey, revision, labelSelector, fieldSelector)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -223,7 +223,7 @@ func (l *LogStructured) Count(ctx context.Context, prefix, startKey string, revi
 		if err != nil {
 			return 0, 0, err
 		}
-		rev, rows, err := l.List(ctx, prefix, prefix, 1000, currentRev, true)
+		rev, rows, err := l.List(ctx, prefix, prefix, 1000, currentRev, true, labelSelector, fieldSelector)
 		return rev, int64(len(rows)), err
 	}
 	return rev, count, nil
@@ -239,7 +239,7 @@ func (l *LogStructured) Update(ctx context.Context, key string, value []byte, re
 		logrus.Tracef("UPDATE %s, value=%d, rev=%d, lease=%v => rev=%d, kvrev=%d, updated=%v, err=%v", key, len(value), revision, lease, revRet, kvRev, updateRet, errRet)
 	}()
 
-	rev, event, err := l.get(ctx, key, "", 1, 0, false, false)
+	rev, event, err := l.get(ctx, key, "", 1, 0, false, false, "", "")
 	if err != nil {
 		return 0, nil, false, err
 	}
@@ -264,7 +264,7 @@ func (l *LogStructured) Update(ctx context.Context, key string, value []byte, re
 
 	rev, err = l.log.Append(ctx, updateEvent)
 	if err != nil {
-		rev, event, err := l.get(ctx, key, "", 1, 0, false, false)
+		rev, event, err := l.get(ctx, key, "", 1, 0, false, false, "", "")
 		if event == nil {
 			return rev, nil, false, err
 		}
@@ -360,7 +360,7 @@ func (l *LogStructured) ttlEvents(ctx context.Context) chan *server.Event {
 	go func() {
 		defer close(result)
 
-		rev, events, err := l.log.List(ctx, "/", "", 1000, 0, false, false)
+		rev, events, err := l.log.List(ctx, "/", "", 1000, 0, false, false, "", "")
 		for len(events) > 0 {
 			if err != nil {
 				logrus.Errorf("TTL event list failed: %v", err)
@@ -373,10 +373,10 @@ func (l *LogStructured) ttlEvents(ctx context.Context) chan *server.Event {
 				}
 			}
 
-			_, events, err = l.log.List(ctx, "/", events[len(events)-1].KV.Key, 1000, rev, false, false)
+			_, events, err = l.log.List(ctx, "/", events[len(events)-1].KV.Key, 1000, rev, false, false, "", "")
 		}
 
-		wr := l.Watch(ctx, "/", rev)
+		wr := l.Watch(ctx, "/", rev, "", "")
 		if wr.CompactRevision != 0 {
 			logrus.Errorf("TTL event watch failed: %v", server.ErrCompacted)
 			return
@@ -412,12 +412,12 @@ func storeTTLEventKV(rwMutex *sync.RWMutex, store map[string]*ttlEventKV, eventK
 	return expires
 }
 
-func (l *LogStructured) Watch(ctx context.Context, prefix string, revision int64) server.WatchResult {
+func (l *LogStructured) Watch(ctx context.Context, prefix string, revision int64, labelSelector, fieldSelector string) server.WatchResult {
 	logrus.Tracef("WATCH %s, revision=%d", prefix, revision)
 
 	// starting watching right away so we don't miss anything
 	ctx, cancel := context.WithCancel(ctx)
-	readChan := l.log.Watch(ctx, prefix)
+	readChan := l.log.Watch(ctx, prefix, labelSelector, fieldSelector)
 
 	// include the current revision in list
 	if revision > 0 {
