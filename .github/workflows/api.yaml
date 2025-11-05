@@ -1,0 +1,33 @@
+name: API Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  
+jobs:
+  api-test:
+    name: API Test
+    if: ${{ ! contains(github.event.head_commit.message, '+RKE2') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: 'true'
+
+      - name: API Tests
+        run: devbox run make -C test/api build test
+        env:
+          TAG: api

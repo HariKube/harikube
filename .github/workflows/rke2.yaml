@@ -1,0 +1,42 @@
+name: RKE2 Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  
+jobs:
+  rke2-test:
+    name: RKE2 Test
+    if: contains(github.event.head_commit.message, '+RKE2')
+    runs-on: self-hosted
+    timeout-minutes: 90
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Cleanup system
+        run: docker system prune -af
+
+      - name: RKE2 Setup Tests
+        run: devbox run make -C test/rke2 build setup-test _load _deploy
+        env:
+          TAG: api
+
+      - name: RKE2 Test Host
+        run: devbox run make -C test/rke2 _test-host
+
+      - name: RKE2 Test vCluster
+        run: devbox run make -C test/rke2 _test-vcluster
+
+      - name: RKE2 Cleanup Tests
+        if: always()
+        run: devbox run make -C test/rke2 cleanup-test
+

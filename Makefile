@@ -53,3 +53,13 @@ apiserver-tests: bin/etcd3.test bin/metrics.test bin/preflight.test
 bin/etcd3.test bin/metrics.test bin/preflight.test: $(PKGSRC)
 	. ./scripts/test-helpers && build-apiserver-tests
 
+.PHONY: test
+test:
+	go test -cover -tags=test $(shell go list ./... | grep -v nats)
+
+harikube-release:
+	rm -rf package ; mkdir -p package
+
+	@helm package harikube-helm-charts/harikube \
+		--dependency-update \
+		-d package

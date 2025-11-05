@@ -1,0 +1,5 @@
+.devbox/
+.vscode/
+bin/
+
+*.tgz

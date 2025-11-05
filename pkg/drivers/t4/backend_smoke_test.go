@@ -139,7 +139,7 @@ func TestT4Backend_ListAndCount(t *testing.T) {
 		}
 	}
 
-	_, kvs, err := b.List(ctx, "/p/", "/p0", 0, 0, false)
+	_, kvs, err := b.List(ctx, "/p/", "/p0", 0, 0, false, "", "")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestT4Backend_ListAndCount(t *testing.T) {
 		t.Fatalf("List under /p/ returned %d, want 3", len(kvs))
 	}
 
-	_, count, err := b.Count(ctx, "/p/", "p0", 0)
+	_, count, err := b.Count(ctx, "/p/", "p0", 0, "", "")
 	if err != nil {
 		t.Fatalf("Count: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestT4Backend_ListAndCount(t *testing.T) {
 		t.Fatalf("Count under /p/ = %d, want 3", count)
 	}
 
-	_, kvs, err = b.List(ctx, "/p/", "/p0", 2, 0, false)
+	_, kvs, err = b.List(ctx, "/p/", "/p0", 2, 0, false, "", "")
 	if err != nil {
 		t.Fatalf("List limit=2: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestT4Backend_Watch(t *testing.T) {
 		t.Fatalf("CurrentRevision: %v", err)
 	}
 
-	wr := b.Watch(ctx, "/w/", "/w0", startRev+1)
+	wr := b.Watch(ctx, "/w/", "/w0", startRev+1, "", "")
 
 	doneCh := make(chan struct{})
 	gotCreate, gotUpdate, gotDelete := false, false, false
@@ -230,7 +230,7 @@ func TestT4Backend_CompactAndCompactedWatch(t *testing.T) {
 		t.Fatalf("Compact: %v", err)
 	}
 
-	wr := b.Watch(ctx, "/c/", "/c0", rev1)
+	wr := b.Watch(ctx, "/c/", "/c0", rev1, "", "")
 	select {
 	case err := <-wr.Errorc:
 		if !errors.Is(err, kserver.ErrCompacted) {

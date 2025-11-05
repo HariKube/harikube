@@ -151,10 +151,10 @@ func (w *watcher) Create(ctx context.Context, r *etcdserverpb.WatchCreateRequest
 	logrus.Tracef("WATCH CREATE server=%d, id=%d, key=%s, end=%s revision=%d, progressNotify=%v, watchCount=%d", w.id, id, key, end, startRevision, r.ProgressNotify, len(w.watches))
 
 	w.wg.Add(1)
-	go w.watch(ctx, key, end, id, startRevision, progressCh)
+	go w.watch(ctx, key, end, id, startRevision, progressCh, r.LabelSelector, r.FieldSelector)
 }
 
-func (w *watcher) watch(ctx context.Context, key, end string, id, startRevision int64, progressCh chan int64) {
+func (w *watcher) watch(ctx context.Context, key, end string, id, startRevision int64, progressCh chan int64, labelSelector, fieldSelector string) {
 	defer w.wg.Done()
 	trace := logrus.IsLevelEnabled(logrus.TraceLevel)
 
@@ -167,7 +167,7 @@ func (w *watcher) watch(ctx context.Context, key, end string, id, startRevision 
 		return
 	}
 
-	wr := w.backend.Watch(ctx, key, end, startRevision)
+	wr := w.backend.Watch(ctx, key, end, startRevision, labelSelector, fieldSelector)
 
 	// If the watch result has a non-zero CompactRevision, then the watch request failed due to
 	// the requested start revision having been compacted.  Pass the current and and compact

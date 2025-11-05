@@ -145,7 +145,7 @@ func (b *Backend) CurrentRevision(ctx context.Context) (int64, error) {
 }
 
 // Count returns an exact count of the number of matching keys and the current revision of the database.
-func (b *Backend) Count(ctx context.Context, key, end string, revision int64) (int64, int64, error) {
+func (b *Backend) Count(ctx context.Context, key, end string, revision int64, _, _ string) (int64, int64, error) {
 	count, err := b.kv.Count(ctx, key, end, revision)
 	if err != nil {
 		return b.kv.BucketRevision(), 0, err
@@ -164,7 +164,7 @@ func (b *Backend) Count(ctx context.Context, key, end string, revision int64) (i
 // Get returns the store's current revision, the associated server.KeyValue or an error.
 // Mirrors etcd and other drivers by being a list call with a single return
 func (b *Backend) Get(ctx context.Context, key string, revision int64, keysOnly bool) (int64, *server.KeyValue, error) {
-	rev, kvs, err := b.List(ctx, key, "", 1, revision, keysOnly)
+	rev, kvs, err := b.List(ctx, key, "", 1, revision, keysOnly, "", "")
 	if err != nil {
 		return rev, nil, err
 	}
@@ -388,7 +388,7 @@ func (b *Backend) Update(ctx context.Context, key string, value []byte, revision
 // that are alphanumerically equal to or greater than the startKey.
 // If limit is provided, the maximum set of matches is limited.
 // If revision is provided, this indicates the maximum revision to return.
-func (b *Backend) List(ctx context.Context, key, end string, limit, maxRevision int64, keysOnly bool) (int64, []*server.KeyValue, error) {
+func (b *Backend) List(ctx context.Context, key, end string, limit, maxRevision int64, keysOnly bool, _, _ string) (int64, []*server.KeyValue, error) {
 	matches, err := b.kv.List(ctx, key, end, limit, maxRevision, keysOnly)
 	if err != nil {
 		return b.kv.BucketRevision(), nil, err
@@ -415,7 +415,7 @@ func (b *Backend) List(ctx context.Context, key, end string, limit, maxRevision 
 	return rev, kvs, nil
 }
 
-func (b *Backend) Watch(ctx context.Context, key, end string, startRevision int64) server.WatchResult {
+func (b *Backend) Watch(ctx context.Context, key, end string, startRevision int64, _, _ string) server.WatchResult {
 	events := make(chan []*server.Event, 32)
 
 	if startRevision > 0 && startRevision <= b.kv.compactRev.Load() {

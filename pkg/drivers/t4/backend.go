@@ -130,7 +130,7 @@ func (b *backend) Delete(ctx context.Context, key string, revision int64) (int64
 	return newRev, toServerKV(oldKV, false), deleted, nil
 }
 
-func (b *backend) List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool) (int64, []*kserver.KeyValue, error) {
+func (b *backend) List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool, _, _ string) (int64, []*kserver.KeyValue, error) {
 	curRev := b.node.CurrentRevision()
 	if revision > 0 && revision > curRev {
 		return curRev, nil, kserver.ErrFutureRev
@@ -157,7 +157,7 @@ func (b *backend) List(ctx context.Context, key, end string, limit, revision int
 	return curRev, out, nil
 }
 
-func (b *backend) Count(ctx context.Context, key, end string, revision int64) (int64, int64, error) {
+func (b *backend) Count(ctx context.Context, key, end string, revision int64, _, _ string) (int64, int64, error) {
 	curRev := b.node.CurrentRevision()
 	if revision > 0 && revision > curRev {
 		return curRev, 0, kserver.ErrFutureRev
@@ -185,7 +185,7 @@ func (b *backend) Update(ctx context.Context, key string, value []byte, revision
 	return newRev, toServerKV(oldKV, false), updated, nil
 }
 
-func (b *backend) Watch(ctx context.Context, key, end string, revision int64) kserver.WatchResult {
+func (b *backend) Watch(ctx context.Context, key, end string, revision int64, _, _ string) kserver.WatchResult {
 	curRev := b.node.CurrentRevision()
 	compactRev := b.node.CompactRevision()
 

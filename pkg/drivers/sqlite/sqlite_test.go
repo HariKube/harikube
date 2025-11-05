@@ -27,6 +27,7 @@ func createBloatedDB(t *testing.T, rowCount int) *sql.DB {
 		(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name INTEGER,
+			uid INTEGER,
 			created INTEGER,
 			deleted INTEGER,
 			create_revision INTEGER,

@@ -34,6 +34,7 @@ var (
 			(
 				id BIGINT UNSIGNED AUTO_INCREMENT,
 				name VARCHAR(630) CHARACTER SET ascii,
+				uid VARCHAR(36) CHARACTER SET ascii,
 				created INTEGER,
 				deleted INTEGER,
 				create_revision BIGINT UNSIGNED,
@@ -42,12 +43,38 @@ var (
 				value MEDIUMBLOB,
 				old_value MEDIUMBLOB,
 				PRIMARY KEY (id)
-			);`,
+			) ENGINE=InnoDB;`,
 		`CREATE INDEX kine_name_index ON kine (name)`,
+		`CREATE INDEX kine_uid_index ON kine (uid)`,
 		`CREATE INDEX kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
+		`CREATE TABLE IF NOT EXISTS kine_labels
+			(
+				kine_id BIGINT UNSIGNED,
+				kine_name VARCHAR(253) CHARACTER SET ascii,
+				name VARCHAR(63),
+				value VARCHAR(63),
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			) ENGINE=InnoDB;`,
+		`CREATE INDEX kine_labels_name_index ON kine_labels (kine_name, name, value)`,
+		`CREATE TABLE IF NOT EXISTS kine_fields
+			(
+				kine_id BIGINT UNSIGNED,
+				kine_name VARCHAR(253) CHARACTER SET ascii,
+				value JSON,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			) ENGINE=InnoDB;`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id BIGINT UNSIGNED,
+				owner VARCHAR(36),
+				block_owner_deletion INTEGER DEFAULT 0,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			) ENGINE=InnoDB;`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT, MODIFY COLUMN create_revision BIGINT UNSIGNED, MODIFY COLUMN prev_revision BIGINT UNSIGNED`,
@@ -87,6 +114,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 		return false, nil, err
 	}
 
+	dialect.SelectorLookupSQL = "JSON_UNQUOTE(JSON_EXTRACT(value, '$.%s')) LIKE CONCAT('%%', ?, '%%')"
 	dialect.LastInsertID = true
 	dialect.GetSizeSQL = query.New(`
 		SELECT SUM(data_length + index_length)

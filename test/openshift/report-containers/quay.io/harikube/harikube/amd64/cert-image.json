@@ -1,0 +1,57 @@
+{
+    "certified": false,
+    "deleted": false,
+    "docker_image_digest": "sha256:0239b30fd631cddcb33cbed2094b874ea0f6713dd7743353257656621918cd50",
+    "docker_image_id": "sha256:870fc83e95ad2da244610d544ae63c4a6eb0fd06759c95c38c7fb7e9348a7181",
+    "image_id": "sha256:0239b30fd631cddcb33cbed2094b874ea0f6713dd7743353257656621918cd50",
+    "parsed_data": {
+        "architecture": "amd64",
+        "created": "2026-06-30 05:56:34.74241656 +0000 UTC",
+        "image_id": "sha256:0239b30fd631cddcb33cbed2094b874ea0f6713dd7743353257656621918cd50",
+        "layers": [
+            "sha256:e9d0259e406fa43064a328e3aab9ce6ed5b5325ae1386dce77dc47ff585a249a",
+            "sha256:896b08d32739eeb767466955cd39876e7724f83f26c7058d1f7f977f9d969620",
+            "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+            "sha256:e6f31ffc071e5560b82a8685fba8214954e5721e3e49269d00958316edbe89fe"
+        ],
+        "os": "linux",
+        "size": 1048,
+        "uncompressed_layer_sizes": [
+            {
+                "layer_id": "sha256:31ad4a471c6852bfec14d757cc75a566c82a9769f12c3918cf6bf52cc0eeb3d0",
+                "size_bytes": 8693760
+            },
+            {
+                "layer_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "size_bytes": 1024
+            },
+            {
+                "layer_id": "sha256:9d065c67205eaea8d676de993409561a3bb93da3d4e6840b5a067889d8a1a7f7",
+                "size_bytes": 47873024
+            },
+            {
+                "layer_id": "sha256:addffbb316c6159c52bf4d2e6ebb41034c6be6a84fc8a7d4d2585ed6c0ef6563",
+                "size_bytes": 1536
+            }
+        ]
+    },
+    "architecture": "amd64",
+    "raw_config": "{\"architecture\":\"amd64\",\"config\":{\"User\":\"nobody\",\"ExposedPorts\":{\"2379/tcp\":{}},\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"ARCH=amd64\"],\"Entrypoint\":[\"/bin/kine\"],\"Volumes\":{\"/db\":{}},\"WorkingDir\":\"/\"},\"created\":\"2026-06-30T05:56:34.74241656Z\",\"history\":[{\"created\":\"2026-06-22T19:20:09.106506185Z\",\"created_by\":\"ADD alpine-minirootfs-3.23.5-x86_64.tar.gz / # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-06-22T19:20:09.106506185Z\",\"created_by\":\"CMD [\\\"/bin/sh\\\"]\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:52:14.972477538Z\",\"created_by\":\"ARG TARGETARCH=amd64\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:52:14.972477538Z\",\"created_by\":\"ENV ARCH=amd64\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:52:14.972477538Z\",\"created_by\":\"RUN |1 TARGETARCH=amd64 /bin/sh -c if [ \\\"${TARGETARCH}\\\" == \\\"arm/v7\\\" ]; then     ARCH=arm;     fi # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-06-30T05:56:34.671159317Z\",\"created_by\":\"COPY /go/src/github.com/k3s-io/kine/bin/kine-amd64 /bin/kine # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-06-30T05:56:34.74241656Z\",\"created_by\":\"RUN |1 TARGETARCH=amd64 /bin/sh -c mkdir /db \\u0026\\u0026 chown nobody /db # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-06-30T05:56:34.74241656Z\",\"created_by\":\"VOLUME [/db]\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:56:34.74241656Z\",\"created_by\":\"EXPOSE [2379/tcp]\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:56:34.74241656Z\",\"created_by\":\"USER nobody\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-06-30T05:56:34.74241656Z\",\"created_by\":\"ENTRYPOINT [\\\"/bin/kine\\\"]\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true}],\"os\":\"linux\",\"rootfs\":{\"type\":\"layers\",\"diff_ids\":[\"sha256:31ad4a471c6852bfec14d757cc75a566c82a9769f12c3918cf6bf52cc0eeb3d0\",\"sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef\",\"sha256:9d065c67205eaea8d676de993409561a3bb93da3d4e6840b5a067889d8a1a7f7\",\"sha256:addffbb316c6159c52bf4d2e6ebb41034c6be6a84fc8a7d4d2585ed6c0ef6563\"]}}",
+    "repositories": [
+        {
+            "published": false,
+            "push_date": "2026-07-30T14:28:47Z",
+            "registry": "quay.io",
+            "repository": "harikube/harikube",
+            "tags": [
+                {
+                    "added_date": "2026-07-30T14:28:47Z",
+                    "name": "latest"
+                }
+            ],
+            "manifest_list_digest": "sha256:c912e39269a467139635c330ba6b65f51f980972fd9a77da33ceb3b9d97ffad9"
+        }
+    ],
+    "sum_layer_size_bytes": 56569344,
+    "uncompressed_top_layer_id": "sha256:31ad4a471c6852bfec14d757cc75a566c82a9769f12c3918cf6bf52cc0eeb3d0"
+}

@@ -1,0 +1,61 @@
+time="2026-07-30T14:32:26Z" level=info msg="certification library version" version="1.19.2 <commit: ffbc84882f216fca874feeaa44ce3df95ee5f07a>"
+time="2026-07-30T14:32:26Z" level=info msg="running checks for quay.io/harikube/kube-apiserver for platform amd64"
+time="2026-07-30T14:32:26Z" level=info msg="target image" image=quay.io/harikube/kube-apiserver
+time="2026-07-30T14:32:48Z" level=info msg="check completed" check=HasLicense result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=HasNoProhibitedPackages result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=HasRequiredLabel result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:32:49Z" level=info msg="USER 65534 specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:32:49Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:32:55Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:32:56Z" level=info msg="check completed" check=BasedOnUbi result=PASSED
+time="2026-07-30T14:32:56Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:32:56Z" level=info msg="This image's tag latest will be paired with digest sha256:8f0231f67b3311ef0878715180461231dafd19a097dc11e937fb19df6a7b092a once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:32:56Z" level=info msg="Preflight result: PASSED"
+time="2026-07-30T14:32:56Z" level=info msg="running checks for quay.io/harikube/kube-apiserver for platform arm64"
+time="2026-07-30T14:32:56Z" level=info msg="target image" image=quay.io/harikube/kube-apiserver
+time="2026-07-30T14:33:13Z" level=info msg="check completed" check=HasLicense result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=HasNoProhibitedPackages result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=HasRequiredLabel result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:33:14Z" level=info msg="USER 65534 specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:33:14Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:33:19Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:33:20Z" level=info msg="check completed" check=BasedOnUbi result=PASSED
+time="2026-07-30T14:33:20Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:33:20Z" level=info msg="This image's tag latest will be paired with digest sha256:82ed333ffa16902582ceedd3a8645c6ad6a941c893193e139073a70be6156a28 once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:33:20Z" level=info msg="Preflight result: PASSED"
+time="2026-07-30T14:33:20Z" level=info msg="running checks for quay.io/harikube/kube-apiserver for platform ppc64le"
+time="2026-07-30T14:33:20Z" level=info msg="target image" image=quay.io/harikube/kube-apiserver
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=HasLicense result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=HasNoProhibitedPackages result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=HasRequiredLabel result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:33:45Z" level=info msg="USER 65534 specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:33:45Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:33:51Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:33:52Z" level=info msg="check completed" check=BasedOnUbi result=PASSED
+time="2026-07-30T14:33:52Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:33:52Z" level=info msg="This image's tag latest will be paired with digest sha256:0f30b8bc435f4df957a66dc7d97991ee7c713e3b9881c43f1784abf2269eb0f6 once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:33:52Z" level=info msg="Preflight result: PASSED"
+time="2026-07-30T14:33:52Z" level=info msg="running checks for quay.io/harikube/kube-apiserver for platform s390x"
+time="2026-07-30T14:33:52Z" level=info msg="target image" image=quay.io/harikube/kube-apiserver
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=HasLicense result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=HasNoProhibitedPackages result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=HasRequiredLabel result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:34:18Z" level=info msg="USER 65534 specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:34:18Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:34:25Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:34:26Z" level=info msg="check completed" check=BasedOnUbi result=PASSED
+time="2026-07-30T14:34:26Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:34:26Z" level=info msg="This image's tag latest will be paired with digest sha256:c194730f8315d6a4007fbf0bb30ee967b6038e26181f7c44d26719b569e717ff once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:34:26Z" level=info msg="Preflight result: PASSED"

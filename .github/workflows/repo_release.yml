@@ -1,0 +1,236 @@
+name: repo release
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GIT_TOKEN  }}
+
+jobs:
+  release-kine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install devbox
+      uses: jetify-com/devbox-install-action@v0.15.0
+      with:
+        enable-cache: 'true'
+
+    - name: Extract branch name
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
+
+    - name: Extract version
+      run: echo "version=$(cat harikube-helm-charts/harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+      id: extract_version
+
+    - name: Render manifests
+      run: make harikube-release
+      env:
+        TAG: ${{ github.ref_name }}
+
+    - name: Helm login
+      run: |
+        echo "${{ secrets.REGISTRY_TOKEN }}" | devbox run helm registry login ${{ vars.REGISTRY }} \
+          --username "${{ vars.REGISTRY_USER }}" \
+          --password-stdin
+
+    - name: Helm push chart
+      run: |
+        devbox run helm push package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}
+
+    - name: Create release
+      if: ${{ !startsWith(github.ref, 'refs/heads/dev-') }}
+      uses: mhmxs/milestone-release-action@main
+      with:
+        milestone-title: ${{ github.ref_name }}
+        pre-body: |
+            # HariKube
+
+            ## What is this?
+
+            Normally, Kubernetes uses a database called ETCD. [Kine](https://github.com/k3s-io/kine) (the origin of this project) is a tool that allows Kubernetes to use other databases (like SQLite or PostgreSQL) instead.
+
+            This specific version of Kine is unique because it handles filtering adirectly at the database level, which can make your cluster much faster and more efficient.
+
+            ## Why this fork exists?
+
+            Both ETCD and Kine are limited by Kubernetes API server itself and how it filters data. API server manages an O(n) cache in memory, and filters data at client side, because both ETCD and Kine are lacking on data filtering. The only real option is vertical scaling of all (API, ETCD, Kine). An average cluster dies at 50-100k records. Of course, you can add more ram, more iops, but these are just postponing the problem.
+
+            By changing a few lines of Kubernetes and a few lines of Kine, this project is able to send filtering to the database level. With these changes it is able to disable watch cache in Kubernetes API, and consumes O(1) memory during operation.
+
+            Here are some benchmark results on Ultra 7 165H 18 Core 4G, single VM ran everything including the k6 benchmark itself. 120 vus, each vu created a custom resource (6 different type) and read it back via label selector:
+
+            - Vanilla Kubernetes with 3 node ETCD cluster:
+
+            ```
+            checks_succeeded...: 100.00% 51236 out of 51236
+            checks_failed......: 0.00% 0 out of 51236
+            http_req_duration..............: avg=799.54ms min=3.87ms med=82.39ms max=4.17s p(90)=2.47s p(95)=2.82s
+            http_req_failed................: 0.00% 0 out of 51236
+            http_reqs......................: 51236 24.976013/s
+
+            time="2026-02-14T19:07:26Z" level=error msg="test run was aborted because k6 received a 'interrupt' signal" make: *** [Makefile:589: k6s-start] Error 105
+
+            OOM Killed, thanks API server
+            ```
+
+            - HariKube OSS with Postgres:
+
+            ```
+            checks_succeeded...: 100.00% 101772 out of 101772
+            checks_failed......: 0.00%   0 out of 101772
+            http_req_duration..............: avg=708.33ms min=6.4ms    med=300.67ms max=6.2s  p(90)=1.99s p(95)=2.48s
+            http_req_failed................: 0.00%  0 out of 101772
+            http_reqs......................: 101772 28.188433/s
+            ```
+
+            ## The numbers are talking for themselves
+
+            | Metric | HariKube OSS | Vanilla K8s |
+            | - | - | - |
+            | Throughput | 28 req/s ✅ | 25 req/s ❌ |
+            | Success Rate | 100% ✅ | 100% (OOM) ❌ |
+            | Latency average | 708ms ✅ | 799ms ❌ |
+            | Latency p95 | 2480ms ✅ | 2820ms ❌ |
+            | Latency p90 | 1990ms ✅ | 2470ms ❌ |
+            | Test Duration | 60m ✅ | ~34m (OOM) ❌ |
+            | Stability | Completed ✅ | KILLED ❌ |
+            | Objects Handled | 50k ✅ | ~26k (OOM) ❌ |
+
+            ### HariKube on steroids with 6 Postgres
+
+            ```
+            checks_succeeded...: 100.00% 429180 out of 429180
+            checks_failed......: 0.00% 0 out of 429180
+            http_req_duration..............: avg=167.17ms min=7.75ms med=71.06ms max=3.71s p(90)=398ms p(95)=543.76ms
+            http_req_failed................: 0.00% 0 out of 429180
+            http_reqs......................: 429180 119.106435/s
+            ```
+
+            | Metric | HariKube AE | Vanilla K8s | Gain |
+            | - | - | - | - |
+            | Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8x |
+            | Success Rate | 100% ✅ | 100% (then OOM) ❌ | not comparable |
+            | Latency average | 167ms ✅ | 799ms ❌ | 4.8x |
+            | Latency p95 | 543ms ✅ | 2820ms ❌ | 5.2x |
+            | Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2x |
+            | Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable |
+            | Stability | Completed ✅ | KILLED ❌ | not comparable |
+            | Objects Handled | 200k+ ✅ | ~26k (crashed) ❌ | 4x |
+
+            Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our business editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
+
+            ## Installation
+            
+            ### Prerequisets
+
+            - Kubernetes cluster; supported versions Vanilla, EKS, AKS, GKE, RKE2, OpenShift >=1.34.0
+            - Cert-manager
+
+            ```bash
+            helm install harikube oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube-helm-charts \
+              --version ${{ steps.extract_version.outputs.version }} \
+              --dependency-update \
+              --create-namespace \
+              --namespace harikube
+            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
+            ```
+
+            You can enable network policies. You have to create namespace manually, label the namespace and skip `--create-namespace` flag.
+
+            ```bash
+            --set middleware.networkPolicy.create=true # kubectl label namespace harikube harikube.info/<NAMESPACE>-middleware=enabled --overwrite
+            ```
+
+            You can enable ServiceMonitors per service.
+
+            ```bash
+            --set middleware.monitoring.create=true
+            ```
+
+            You can enable the MutatingAdmissionPolicy to label non core resources with skip-controller-manager-metadata-caching.
+
+            ```bash
+            --set mutatingAdmissionPolicy.create=true
+            ```
+
+            You can enable a scalable contorl plane extension.
+
+            ```bash
+            --set apiServer.create=true
+            --set controllerManager.create=true # By default all controllers are disabled, enable controllers you want to run.
+            ```
+
+            You can enable network policies for control plane.
+
+            ```bash
+            --set apiServer.networkPolicy.create=true # kubectl label namespace harikube harikube.info/<NAMESPACE>-apiserver=enabled --overwrite
+            --set controllerManager.networkPolicy.create=true # kubectl label namespace harikube harikube.info/<NAMESPACE>-controllermanager=enabled --overwrite
+            ```
+
+            You can enable ServiceMonitors per service.
+
+            ```bash
+            --set apiServer.monitoring.create=true
+            --set controllerManager.monitoring.create=true
+            ```
+
+            ## vCluster connection
+
+            Connect via vCluster CLI.
+
+            ```bash
+            vcluster connect harikube
+            ```
+
+            Connect via vCluster KUBECONFIG.
+            
+            ```bash
+            kubectl get secret -n harikube vc-harikube -o yaml
+            ```
+
+            > 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
+
+            > 🔓 For service access from host, the vCluster setup keeps things simple: Create your ServiceAccount, create a secret annotated with `kubernetes.io/service-account.name` (example below), and vCluster will sync the secret to the host cluster.
+
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: remote-your-service-account-name
+              annotations:
+                kubernetes.io/service-account.name: "your-service-account-name"
+            type: kubernetes.io/service-account-token
+            ```
+
+            On the host cluster, you can fetch the connection details.
+
+            ```bash
+            KUBE_API_URL=harikube.harikube.svc.cluster.local
+            TOKEN=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.token}' | base64 -d)
+            CA_CERT=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.ca\.crt}' | base64 -d)
+            ```
+
+            ## Customization
+
+            The manifests gereted for the release are covering basic setup. You can customize your setup, you can find the manifests [here](https://github.com/HariKube/harikube/tree/${{ github.ref_name }}/harikube-helm-charts/harikube/vcluster).
+
+            ## Important Requirement
+
+            To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is waiting for.
+
+            - [Kubernetes Patches](https://github.com/HariKube/kubernetes-patches)
+            - [Patched Images](https://quay.io/repository/harikube/kubernetes?tab=tags&tag=latest)
+
+            ## Release Notes
+
+        draft: true
+        prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
+        files: package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz
+  

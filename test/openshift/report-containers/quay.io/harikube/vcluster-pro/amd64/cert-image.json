@@ -1,0 +1,161 @@
+{
+    "certified": false,
+    "deleted": false,
+    "docker_image_digest": "sha256:e224520267c3e245bc162f9df89e3fb45105036dc2624639b7e1713b3c3e8d9f",
+    "docker_image_id": "sha256:7d31a4c8fa9dce00485e4f9249c7d3a148a2036aeafd14cb2efea46a28a98104",
+    "image_id": "sha256:e224520267c3e245bc162f9df89e3fb45105036dc2624639b7e1713b3c3e8d9f",
+    "parsed_data": {
+        "architecture": "amd64",
+        "created": "2026-07-27 17:20:59.900451138 +0000 UTC",
+        "image_id": "sha256:e224520267c3e245bc162f9df89e3fb45105036dc2624639b7e1713b3c3e8d9f",
+        "labels": [
+            {
+                "name": "vcs-type",
+                "value": "git"
+            },
+            {
+                "name": "description",
+                "value": "vCluster HariKube edition is a RedHat compatible version."
+            },
+            {
+                "name": "io.k8s.display-name",
+                "value": "Red Hat Universal Base Image 9 Minimal"
+            },
+            {
+                "name": "name",
+                "value": "vCluster"
+            },
+            {
+                "name": "org.opencontainers.image.revision",
+                "value": "9932c86214d5e8b9c79570f3f4ebe16275359bc0"
+            },
+            {
+                "name": "build-date",
+                "value": "2026-07-22T07:34:05Z"
+            },
+            {
+                "name": "com.redhat.component",
+                "value": "ubi9-minimal-container"
+            },
+            {
+                "name": "cpe",
+                "value": "cpe:/a:redhat:enterprise_linux:9::appstream"
+            },
+            {
+                "name": "org.opencontainers.image.created",
+                "value": "2026-07-22T07:34:05Z"
+            },
+            {
+                "name": "io.k8s.description",
+                "value": "The Universal Base Image Minimal is a stripped down image that uses microdnf as a package manager. This base image is freely redistributable, but Red Hat only supports Red Hat technologies through subscriptions for Red Hat products. This image is maintained by Red Hat and updated regularly."
+            },
+            {
+                "name": "io.openshift.expose-services",
+                "value": ""
+            },
+            {
+                "name": "io.openshift.tags",
+                "value": "minimal rhel9"
+            },
+            {
+                "name": "summary",
+                "value": "vCluster HariKube Edition"
+            },
+            {
+                "name": "url",
+                "value": "https://catalog.redhat.com/en/search?searchType=containers"
+            },
+            {
+                "name": "vendor",
+                "value": "inspirNation Bt."
+            },
+            {
+                "name": "version",
+                "value": "0.32.1"
+            },
+            {
+                "name": "architecture",
+                "value": "x86_64"
+            },
+            {
+                "name": "com.redhat.license_terms",
+                "value": "https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI"
+            },
+            {
+                "name": "distribution-scope",
+                "value": "public"
+            },
+            {
+                "name": "io.buildah.version",
+                "value": "1.44.0"
+            },
+            {
+                "name": "maintainer",
+                "value": "richard.kovacs@harikube.com"
+            },
+            {
+                "name": "release",
+                "value": "0"
+            },
+            {
+                "name": "vcs-ref",
+                "value": "9932c86214d5e8b9c79570f3f4ebe16275359bc0"
+            }
+        ],
+        "layers": [
+            "sha256:58fba57a7ca399cb0eac649e378482c01e127737426755c0baf531d6dfb0c4c9",
+            "sha256:6d83620d7280b5531033a6380e666ac2ff65211cf9d5dd2fb59f6a13cc3715c4",
+            "sha256:8d73ed00cc19f8e810fecf13b4c35336cea92278412f547c81a7abc7bfb38bd8",
+            "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+            "sha256:f12c796a02f400ef5035187ef646777fcb5ffacbd143ff73746681ef5b2d1d10",
+            "sha256:0ec7fae52e518620222f79026165907f132d7d0cf0309ab3b53393aba1d2dc29"
+        ],
+        "os": "linux",
+        "size": 1574,
+        "uncompressed_layer_sizes": [
+            {
+                "layer_id": "sha256:13c344e04a81417091a8c59bc6255275a456ebba923cbed497cc39f6764b201c",
+                "size_bytes": 108679168
+            },
+            {
+                "layer_id": "sha256:668dc4e6f426fd3b72f3b3fd0aa4a4a0896a906a78a7dd887659c3598d9c43fc",
+                "size_bytes": 13824
+            },
+            {
+                "layer_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "size_bytes": 1024
+            },
+            {
+                "layer_id": "sha256:d604ca5fd8ae7bd409abc16e5a1d71b7d92f5e6a22fe106fd7dca1d89304b556",
+                "size_bytes": 2560
+            },
+            {
+                "layer_id": "sha256:36e6335d421ead9a1f3b8c02f5112cd19e806682cf11dddf30b9b8f4ef60ba83",
+                "size_bytes": 158562304
+            },
+            {
+                "layer_id": "sha256:1d19e679e866d537a9b5e84a851d4a81401edb4a17a981460593fa56ce20b344",
+                "size_bytes": 209875456
+            }
+        ]
+    },
+    "architecture": "amd64",
+    "raw_config": "{\"architecture\":\"amd64\",\"config\":{\"User\":\"65534\",\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"container=oci\"],\"Entrypoint\":[\"/vcluster\",\"start\"],\"WorkingDir\":\"/\",\"Labels\":{\"architecture\":\"x86_64\",\"build-date\":\"2026-07-22T07:34:05Z\",\"com.redhat.component\":\"ubi9-minimal-container\",\"com.redhat.license_terms\":\"https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI\",\"cpe\":\"cpe:/a:redhat:enterprise_linux:9::appstream\",\"description\":\"vCluster HariKube edition is a RedHat compatible version.\",\"distribution-scope\":\"public\",\"io.buildah.version\":\"1.44.0\",\"io.k8s.description\":\"The Universal Base Image Minimal is a stripped down image that uses microdnf as a package manager. This base image is freely redistributable, but Red Hat only supports Red Hat technologies through subscriptions for Red Hat products. This image is maintained by Red Hat and updated regularly.\",\"io.k8s.display-name\":\"Red Hat Universal Base Image 9 Minimal\",\"io.openshift.expose-services\":\"\",\"io.openshift.tags\":\"minimal rhel9\",\"maintainer\":\"richard.kovacs@harikube.com\",\"name\":\"vCluster\",\"org.opencontainers.image.created\":\"2026-07-22T07:34:05Z\",\"org.opencontainers.image.revision\":\"9932c86214d5e8b9c79570f3f4ebe16275359bc0\",\"release\":\"0\",\"summary\":\"vCluster HariKube Edition\",\"url\":\"https://catalog.redhat.com/en/search?searchType=containers\",\"vcs-ref\":\"9932c86214d5e8b9c79570f3f4ebe16275359bc0\",\"vcs-type\":\"git\",\"vendor\":\"inspirNation Bt.\",\"version\":\"0.32.1\"}},\"created\":\"2026-07-27T17:20:59.900451138Z\",\"history\":[{\"created\":\"2026-07-22T07:34:24.627792741Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL maintainer=\\\"Red Hat, Inc.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.642730317Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL vendor=\\\"Red Hat, Inc.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.655676144Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL url=\\\"https://catalog.redhat.com/en/search?searchType=containers\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.668397381Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL com.redhat.component=\\\"ubi9-minimal-container\\\"       name=\\\"ubi9/ubi-minimal\\\"       version=\\\"9.8\\\"       cpe=\\\"cpe:/a:redhat:enterprise_linux:9::appstream\\\"       distribution-scope=\\\"public\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.680961132Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL com.redhat.license_terms=\\\"https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.694706505Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL summary=\\\"Provides the latest release of the minimal Red Hat Universal Base Image 9.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.70782898Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL description=\\\"The Universal Base Image Minimal is a stripped down image that uses microdnf as a package manager. This base image is freely redistributable, but Red Hat only supports Red Hat technologies through subscriptions for Red Hat products. This image is maintained by Red Hat and updated regularly.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.720783278Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.k8s.description=\\\"The Universal Base Image Minimal is a stripped down image that uses microdnf as a package manager. This base image is freely redistributable, but Red Hat only supports Red Hat technologies through subscriptions for Red Hat products. This image is maintained by Red Hat and updated regularly.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.733902883Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.k8s.display-name=\\\"Red Hat Universal Base Image 9 Minimal\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.749730049Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.openshift.expose-services=\\\"\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.763332115Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.openshift.tags=\\\"minimal rhel9\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:24.776779885Z\",\"created_by\":\"/bin/sh -c #(nop) ENV container oci\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.250810735Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:6b16b3336a884691d82bd90e5faf7d65fad1354d2664539a143b7bcc0d24b71e in /      \",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.317628165Z\",\"created_by\":\"/bin/sh -c #(nop) COPY file:1376702515d596f414e3aa494e0daa6d408a6d2475c4aeca96bf9392f5287f69 in /etc/yum.repos.d/.      \",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.331099635Z\",\"created_by\":\"/bin/sh -c #(nop) CMD [\\\"/bin/bash\\\"]\",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.396880119Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:3c57dcdf8d00b61e1e938fb8386fff8fc937e99ea4eadb82d9df5d9aeb4fdee1 in /usr/share/buildinfo/      \",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.458613902Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:3c57dcdf8d00b61e1e938fb8386fff8fc937e99ea4eadb82d9df5d9aeb4fdee1 in /root/buildinfo/      \",\"empty_layer\":true},{\"created\":\"2026-07-22T07:34:25.740506733Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL \\\"org.opencontainers.image.created\\\"=\\\"2026-07-22T07:34:05Z\\\" \\\"org.opencontainers.image.revision\\\"=\\\"9932c86214d5e8b9c79570f3f4ebe16275359bc0\\\" \\\"build-date\\\"=\\\"2026-07-22T07:34:05Z\\\" \\\"architecture\\\"=\\\"x86_64\\\" \\\"vcs-ref\\\"=\\\"9932c86214d5e8b9c79570f3f4ebe16275359bc0\\\" \\\"vcs-type\\\"=\\\"git\\\" \\\"release\\\"=\\\"1784705586\\\"org.opencontainers.image.created=2026-07-22T07:34:05Z,org.opencontainers.image.revision=9932c86214d5e8b9c79570f3f4ebe16275359bc0\"},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"ARG VERSION=0.32.1\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL name=vCluster\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL vendor=inspirNation Bt.\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL version=0.32.1\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL release=0\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL summary=vCluster HariKube Edition\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL description=vCluster HariKube edition is a RedHat compatible version.\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"LABEL maintainer=richard.kovacs@harikube.com\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:58.013798371Z\",\"created_by\":\"COPY LICENSE /licenses/LICENSE # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-27T17:20:58.025840804Z\",\"created_by\":\"COPY --chown=65534:0 /tmp/rootfs/* / # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-27T17:20:58.038768341Z\",\"created_by\":\"COPY --chown=65534:0 /tmp/vclusterfs/vcluster /var/lib/vcluster # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-27T17:20:59.348085444Z\",\"created_by\":\"COPY --chown=65534:0 /vcluster /vcluster # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-27T17:20:59.900451138Z\",\"created_by\":\"COPY --chown=65534:0 /usr/local/bin/* /usr/local/bin # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-27T17:20:59.900451138Z\",\"created_by\":\"USER 65534\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:59.900451138Z\",\"created_by\":\"WORKDIR /\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-27T17:20:59.900451138Z\",\"created_by\":\"ENTRYPOINT [\\\"/vcluster\\\" \\\"start\\\"]\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true}],\"os\":\"linux\",\"rootfs\":{\"type\":\"layers\",\"diff_ids\":[\"sha256:13c344e04a81417091a8c59bc6255275a456ebba923cbed497cc39f6764b201c\",\"sha256:668dc4e6f426fd3b72f3b3fd0aa4a4a0896a906a78a7dd887659c3598d9c43fc\",\"sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef\",\"sha256:d604ca5fd8ae7bd409abc16e5a1d71b7d92f5e6a22fe106fd7dca1d89304b556\",\"sha256:36e6335d421ead9a1f3b8c02f5112cd19e806682cf11dddf30b9b8f4ef60ba83\",\"sha256:1d19e679e866d537a9b5e84a851d4a81401edb4a17a981460593fa56ce20b344\"]}}",
+    "repositories": [
+        {
+            "published": false,
+            "push_date": "2026-07-30T14:36:54Z",
+            "registry": "quay.io",
+            "repository": "harikube/vcluster-pro",
+            "tags": [
+                {
+                    "added_date": "2026-07-30T14:36:54Z",
+                    "name": "latest"
+                }
+            ],
+            "manifest_list_digest": "sha256:b741efae8d31ecfe4c46101d353920f9aef7ceb895ac6f0a00d85d6bae1bb63b"
+        }
+    ],
+    "sum_layer_size_bytes": 477134336,
+    "uncompressed_top_layer_id": "sha256:13c344e04a81417091a8c59bc6255275a456ebba923cbed497cc39f6764b201c"
+}

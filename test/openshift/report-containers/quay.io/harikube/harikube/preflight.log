@@ -1,0 +1,35 @@
+time="2026-07-30T14:28:31Z" level=info msg="certification library version" version="1.19.2 <commit: ffbc84882f216fca874feeaa44ce3df95ee5f07a>"
+time="2026-07-30T14:28:33Z" level=info msg="running checks for quay.io/harikube/harikube for platform amd64"
+time="2026-07-30T14:28:33Z" level=info msg="target image" image=quay.io/harikube/harikube
+time="2026-07-30T14:28:47Z" level=error msg="could not get rpm list, continuing without it" error="could not find rpm db/packages: stat /var/preflight/tmp/fs/usr/lib/sysimage/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/Packages: no such file or directory"
+time="2026-07-30T14:28:47Z" level=info msg="warning: licenses directory does not exist or all of its children are empty directories: error when checking for /licenses: stat /var/preflight/tmp/fs/licenses: no such file or directory" check=HasLicense
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=HasLicense result=FAILED
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=HasNoProhibitedPackages err="unable to get a list of all packages in the image: could not get rpm list: could not find rpm db/packages: stat /var/preflight/tmp/fs/usr/lib/sysimage/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/Packages: no such file or directory" result=ERROR
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=HasRequiredLabel result=FAILED
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:28:47Z" level=info msg="USER nobody specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:28:47Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:28:49Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:28:50Z" level=info msg="check completed" check=BasedOnUbi result=FAILED
+time="2026-07-30T14:28:50Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:28:50Z" level=info msg="This image's tag latest will be paired with digest sha256:0239b30fd631cddcb33cbed2094b874ea0f6713dd7743353257656621918cd50 once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:28:50Z" level=info msg="Preflight result: FAILED"
+time="2026-07-30T14:28:50Z" level=info msg="running checks for quay.io/harikube/harikube for platform arm64"
+time="2026-07-30T14:28:50Z" level=info msg="target image" image=quay.io/harikube/harikube
+time="2026-07-30T14:29:05Z" level=error msg="could not get rpm list, continuing without it" error="could not find rpm db/packages: stat /var/preflight/tmp/fs/usr/lib/sysimage/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/Packages: no such file or directory"
+time="2026-07-30T14:29:05Z" level=info msg="warning: licenses directory does not exist or all of its children are empty directories: error when checking for /licenses: stat /var/preflight/tmp/fs/licenses: no such file or directory" check=HasLicense
+time="2026-07-30T14:29:05Z" level=info msg="check completed" check=HasLicense result=FAILED
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=HasUniqueTag result=PASSED
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=LayerCountAcceptable result=PASSED
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=HasNoProhibitedPackages err="unable to get a list of all packages in the image: could not get rpm list: could not find rpm db/packages: stat /var/preflight/tmp/fs/usr/lib/sysimage/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/rpmdb.sqlite: no such file or directory\nstat /var/preflight/tmp/fs/var/lib/rpm/Packages: no such file or directory" result=ERROR
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=HasRequiredLabel result=FAILED
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=HasNoProhibitedLabels result=PASSED
+time="2026-07-30T14:29:06Z" level=info msg="USER nobody specified that is non-root" check=RunAsNonRoot
+time="2026-07-30T14:29:06Z" level=info msg="check completed" check=RunAsNonRoot result=PASSED
+time="2026-07-30T14:29:08Z" level=info msg="check completed" check=HasModifiedFiles result=PASSED
+time="2026-07-30T14:29:09Z" level=info msg="check completed" check=BasedOnUbi result=FAILED
+time="2026-07-30T14:29:09Z" level=info msg="check completed" check=HasProhibitedContainerName result=PASSED
+time="2026-07-30T14:29:09Z" level=info msg="This image's tag latest will be paired with digest sha256:3fc646818d35c071d53338a3d909e9c4a36d74d6a9516133f94290be664c210c once this image has been published in accordance with Red Hat Certification policy. You may then add or remove any supplemental tags through your Red Hat Connect portal as you see fit."
+time="2026-07-30T14:29:09Z" level=info msg="Preflight result: FAILED"

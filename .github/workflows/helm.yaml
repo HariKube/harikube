@@ -1,0 +1,32 @@
+name: Helm E2E
+
+on:
+  push:
+    branches-ignore:
+    - release-v**
+    - rc-v**
+    - beta-v**
+    - alpha-v**
+    - dev-v**
+
+  pull_request:
+    branches: [main]
+  
+jobs:
+  helm-test:
+    name: Helm test
+    if: ${{ ! contains(github.event.head_commit.message, '+RKE2') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: 'true'
+
+      - name: Run tester
+        run: devbox run make -C test/helm build test
+        env:
+          TAG: e2e

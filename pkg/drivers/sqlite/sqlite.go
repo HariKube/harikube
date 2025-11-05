@@ -27,6 +27,7 @@ var (
 			(
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name TEXT,
+				uid INTEGER,
 				created INTEGER,
 				deleted INTEGER,
 				create_revision INTEGER,
@@ -36,11 +37,37 @@ var (
 				old_value BLOB
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_index ON kine (name)`,
+		`CREATE INDEX IF NOT EXISTS kine_uid_index ON kine (uid)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_compact_rev_key_with_prev_revision_index ON kine(id, name, prev_revision) WHERE name != 'compact_rev_key' AND prev_revision != 0`,
+		`CREATE TABLE IF NOT EXISTS kine_labels
+			(
+				kine_id INTEGER,
+				kine_name INTEGER,
+				name TEXT,
+				value TEXT,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_labels_name_index ON kine_labels (kine_name, name, value)`,
+		`CREATE TABLE IF NOT EXISTS kine_fields
+			(
+				kine_id INTEGER,
+				kine_name INTEGER,
+				value JSON,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id INTEGER,
+				owner INTEGER,
+				block_owner_deletion INTEGER DEFAULT 0,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 )
 
@@ -83,6 +110,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 		return nil, nil, err
 	}
 
+	dialect.SelectorLookupSQL = "json_extract(value, '$.%s') LIKE CONCAT('%%', ?, '%%')"
 	dialect.LastInsertID = true
 	dialect.GetSizeSQL = query.New(`
 		SELECT (page_count - freelist_count) * page_size

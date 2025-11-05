@@ -1,0 +1,163 @@
+{
+    "certified": false,
+    "deleted": false,
+    "docker_image_digest": "sha256:2ac345dca84bf5e9ea35943617becc3338aff99d2429dbd77b0f2eb407e9371a",
+    "docker_image_id": "sha256:5ee8f00c7ff63e0f5c7bc398df1b8fafc25c1e13d8f7c063f43e56461df8cd8b",
+    "image_id": "sha256:2ac345dca84bf5e9ea35943617becc3338aff99d2429dbd77b0f2eb407e9371a",
+    "parsed_data": {
+        "architecture": "amd64",
+        "command": "/bin/sh -c /bin/sh",
+        "created": "2026-07-24 10:07:09.160701484 +0000 UTC",
+        "image_id": "sha256:2ac345dca84bf5e9ea35943617becc3338aff99d2429dbd77b0f2eb407e9371a",
+        "labels": [
+            {
+                "name": "io.k8s.display-name",
+                "value": "Red Hat Universal Base Image 9 Micro"
+            },
+            {
+                "name": "org.opencontainers.image.revision",
+                "value": "97262785bdef2694cdc29ef7ef158812c44b97e0"
+            },
+            {
+                "name": "architecture",
+                "value": "x86_64"
+            },
+            {
+                "name": "build-date",
+                "value": "2026-07-22T06:49:45Z"
+            },
+            {
+                "name": "com.redhat.component",
+                "value": "ubi9-micro-container"
+            },
+            {
+                "name": "com.redhat.license_terms",
+                "value": "https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI"
+            },
+            {
+                "name": "cpe",
+                "value": "cpe:/a:redhat:enterprise_linux:9::appstream"
+            },
+            {
+                "name": "name",
+                "value": "HariKube"
+            },
+            {
+                "name": "org.opencontainers.image.created",
+                "value": "2026-07-22T06:49:45Z"
+            },
+            {
+                "name": "maintainer",
+                "value": "richard.kovacs@harikube.com"
+            },
+            {
+                "name": "release",
+                "value": "0"
+            },
+            {
+                "name": "url",
+                "value": "https://catalog.redhat.com/en/search?searchType=containers"
+            },
+            {
+                "name": "vcs-type",
+                "value": "git"
+            },
+            {
+                "name": "vendor",
+                "value": "inspirNation Bt."
+            },
+            {
+                "name": "version",
+                "value": ""
+            },
+            {
+                "name": "description",
+                "value": "Kubernetes HariKube edition is a horizontally scalable Kubernetes edition."
+            },
+            {
+                "name": "io.buildah.version",
+                "value": "1.44.0"
+            },
+            {
+                "name": "io.openshift.expose-services",
+                "value": ""
+            },
+            {
+                "name": "summary",
+                "value": "Kubernetes HariKube Edition"
+            },
+            {
+                "name": "vcs-ref",
+                "value": "97262785bdef2694cdc29ef7ef158812c44b97e0"
+            },
+            {
+                "name": "distribution-scope",
+                "value": "public"
+            },
+            {
+                "name": "io.k8s.description",
+                "value": "Very small image which doesn't install the package manager."
+            }
+        ],
+        "layers": [
+            "sha256:2916475bd1f8a1aebeebc4bdf139a49aca5760c6a8afb7c214cb0bae96e53681",
+            "sha256:0fa0c038cccdd319a20bca8032a2c2b540319b63d9919a6d30486a7355a81c93",
+            "sha256:45c3c072378e3b36ed0fecf0e9f6f0a063daf8ed71aaa587b3085a4104c8d8a2",
+            "sha256:1a2c6ba44a7e73e08f7f92b97087d7d10df05926c7cf472fdb9bd4c74aae67ee",
+            "sha256:7bb4cda723df8f3a48111ae138a624cd6778d3ee048c1c111b7a3cbdf2da5bba",
+            "sha256:51660e81efc847885abc86c3df8e73fccf139d7eb7e629be68c4cfc9548ed9f8",
+            "sha256:76cd2dbe5d26d9a5337fc4dfed662e1716c65723ad043f07cb43217387ff8de8"
+        ],
+        "os": "linux",
+        "size": 1791,
+        "uncompressed_layer_sizes": [
+            {
+                "layer_id": "sha256:0e111396ebd730643a13d67c30dae48976f47edf0694c6a51368eca3773c8a4c",
+                "size_bytes": 23591424
+            },
+            {
+                "layer_id": "sha256:798f07e7e2ddcc64b85836e7e33465f29f0d160082b1497b8d92a9686910b2c1",
+                "size_bytes": 13824
+            },
+            {
+                "layer_id": "sha256:13c3bf20aaa195251c09644c93d3d2674ddd8647d82e9f5a083477dccaef98fd",
+                "size_bytes": 2560
+            },
+            {
+                "layer_id": "sha256:034b480e9f13c9bb7b6c3eb2de418031e1fd1c588a678f36d8696d6469977867",
+                "size_bytes": 88415744
+            },
+            {
+                "layer_id": "sha256:d984ed6cdc371ccc4a881130267b158961d673c7f21083cc2ea2fd49d28c7223",
+                "size_bytes": 74361344
+            },
+            {
+                "layer_id": "sha256:2f9660b01ec437a517164ef89355b1a2f57ae4affeda4e4d6a4ae1eb0abfcc54",
+                "size_bytes": 49154560
+            },
+            {
+                "layer_id": "sha256:a8519f4211b0d4676b19972d6b530ff5547432139bac16b91d2ca2bebeaeaae2",
+                "size_bytes": 44247552
+            }
+        ]
+    },
+    "architecture": "amd64",
+    "raw_config": "{\"architecture\":\"amd64\",\"config\":{\"User\":\"65534\",\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/sh\",\"-c\",\"/bin/sh\"],\"WorkingDir\":\"/\",\"Labels\":{\"architecture\":\"x86_64\",\"build-date\":\"2026-07-22T06:49:45Z\",\"com.redhat.component\":\"ubi9-micro-container\",\"com.redhat.license_terms\":\"https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI\",\"cpe\":\"cpe:/a:redhat:enterprise_linux:9::appstream\",\"description\":\"Kubernetes HariKube edition is a horizontally scalable Kubernetes edition.\",\"distribution-scope\":\"public\",\"io.buildah.version\":\"1.44.0\",\"io.k8s.description\":\"Very small image which doesn't install the package manager.\",\"io.k8s.display-name\":\"Red Hat Universal Base Image 9 Micro\",\"io.openshift.expose-services\":\"\",\"maintainer\":\"richard.kovacs@harikube.com\",\"name\":\"HariKube\",\"org.opencontainers.image.created\":\"2026-07-22T06:49:45Z\",\"org.opencontainers.image.revision\":\"97262785bdef2694cdc29ef7ef158812c44b97e0\",\"release\":\"0\",\"summary\":\"Kubernetes HariKube Edition\",\"url\":\"https://catalog.redhat.com/en/search?searchType=containers\",\"vcs-ref\":\"97262785bdef2694cdc29ef7ef158812c44b97e0\",\"vcs-type\":\"git\",\"vendor\":\"inspirNation Bt.\",\"version\":\"\"}},\"created\":\"2026-07-24T10:07:09.160701484Z\",\"history\":[{\"created\":\"2026-07-22T06:49:59.00135561Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL maintainer=\\\"Red Hat, Inc.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.014302115Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL vendor=\\\"Red Hat, Inc.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.026600354Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL url=\\\"https://catalog.redhat.com/en/search?searchType=containers\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.039387265Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL com.redhat.component=\\\"ubi9-micro-container\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.050548537Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL name=\\\"ubi9/ubi-micro\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.062118928Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL version=\\\"9.8\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.073732261Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL cpe=\\\"cpe:/a:redhat:enterprise_linux:9::appstream\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.085054346Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL distribution-scope=\\\"public\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.097021447Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL com.redhat.license_terms=\\\"https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.109331707Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL summary=\\\"ubi9 micro image\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.122152828Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL description=\\\"Very small image which doesn't install the package manager.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.133709369Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.k8s.description=\\\"Very small image which doesn't install the package manager.\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.14567426Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.k8s.display-name=\\\"Red Hat Universal Base Image 9 Micro\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.157111958Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL io.openshift.expose-services=\\\"\\\"\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.336645475Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:d73ca824dd5baff21895f25658aad8ebd2549116a8fb5a7b1fdf6e594adb5c49 in /      \",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.397602367Z\",\"created_by\":\"/bin/sh -c #(nop) COPY file:1376702515d596f414e3aa494e0daa6d408a6d2475c4aeca96bf9392f5287f69 in /etc/yum.repos.d/      \",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.410598114Z\",\"created_by\":\"/bin/sh -c #(nop) CMD /bin/sh\",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.472504899Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:37dc6c1615fa04f9f9be5e759516afcb7976ee966c597804727d63bdaaacdea7 in /usr/share/buildinfo/      \",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.5342028Z\",\"created_by\":\"/bin/sh -c #(nop) COPY dir:37dc6c1615fa04f9f9be5e759516afcb7976ee966c597804727d63bdaaacdea7 in /root/buildinfo/      \",\"empty_layer\":true},{\"created\":\"2026-07-22T06:49:59.620883478Z\",\"created_by\":\"/bin/sh -c #(nop) LABEL \\\"org.opencontainers.image.created\\\"=\\\"2026-07-22T06:49:45Z\\\" \\\"org.opencontainers.image.revision\\\"=\\\"97262785bdef2694cdc29ef7ef158812c44b97e0\\\" \\\"build-date\\\"=\\\"2026-07-22T06:49:45Z\\\" \\\"architecture\\\"=\\\"x86_64\\\" \\\"vcs-ref\\\"=\\\"97262785bdef2694cdc29ef7ef158812c44b97e0\\\" \\\"vcs-type\\\"=\\\"git\\\" \\\"release\\\"=\\\"1784702951\\\"org.opencontainers.image.created=2026-07-22T06:49:45Z,org.opencontainers.image.revision=97262785bdef2694cdc29ef7ef158812c44b97e0\"},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL name=HariKube\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL vendor=inspirNation Bt.\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL version=\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL release=0\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL summary=Kubernetes HariKube Edition\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL description=Kubernetes HariKube edition is a horizontally scalable Kubernetes edition.\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"LABEL maintainer=richard.kovacs@harikube.com\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.264931913Z\",\"created_by\":\"COPY LICENSE /licenses/LICENSE # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-24T10:07:08.290110176Z\",\"created_by\":\"COPY --chown=65534:0 /tmp/rootfs/* / # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-24T10:07:08.290110176Z\",\"created_by\":\"USER 65534\",\"comment\":\"buildkit.dockerfile.v0\",\"empty_layer\":true},{\"created\":\"2026-07-24T10:07:08.496192917Z\",\"created_by\":\"COPY /usr/local/bin/kube-apiserver /kubernetes/kube-apiserver # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-24T10:07:09.002127939Z\",\"created_by\":\"COPY /usr/local/bin/kube-controller-manager /kubernetes/kube-controller-manager # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-24T10:07:09.050353105Z\",\"created_by\":\"COPY /usr/local/bin/kube-scheduler /kubernetes/kube-scheduler # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"},{\"created\":\"2026-07-24T10:07:09.160701484Z\",\"created_by\":\"COPY /usr/local/bin/kube-proxy /kubernetes/kube-proxy # buildkit\",\"comment\":\"buildkit.dockerfile.v0\"}],\"os\":\"linux\",\"rootfs\":{\"type\":\"layers\",\"diff_ids\":[\"sha256:0e111396ebd730643a13d67c30dae48976f47edf0694c6a51368eca3773c8a4c\",\"sha256:798f07e7e2ddcc64b85836e7e33465f29f0d160082b1497b8d92a9686910b2c1\",\"sha256:13c3bf20aaa195251c09644c93d3d2674ddd8647d82e9f5a083477dccaef98fd\",\"sha256:034b480e9f13c9bb7b6c3eb2de418031e1fd1c588a678f36d8696d6469977867\",\"sha256:d984ed6cdc371ccc4a881130267b158961d673c7f21083cc2ea2fd49d28c7223\",\"sha256:2f9660b01ec437a517164ef89355b1a2f57ae4affeda4e4d6a4ae1eb0abfcc54\",\"sha256:a8519f4211b0d4676b19972d6b530ff5547432139bac16b91d2ca2bebeaeaae2\"]}}",
+    "repositories": [
+        {
+            "published": false,
+            "push_date": "2026-07-27T11:02:50Z",
+            "registry": "quay.io",
+            "repository": "harikube/kubernetes",
+            "tags": [
+                {
+                    "added_date": "2026-07-27T11:02:50Z",
+                    "name": "latest"
+                }
+            ],
+            "manifest_list_digest": "sha256:3451e2e19b37d15e76d1835e903b7e6fb740a12f9594fc49565cdc61ca52d378"
+        }
+    ],
+    "sum_layer_size_bytes": 279787008,
+    "uncompressed_top_layer_id": "sha256:0e111396ebd730643a13d67c30dae48976f47edf0694c6a51368eca3773c8a4c"
+}

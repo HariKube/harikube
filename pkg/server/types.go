@@ -7,6 +7,10 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -30,10 +34,10 @@ type Backend interface {
 	Get(ctx context.Context, key string, revision int64, keysOnly bool) (int64, *KeyValue, error)
 	Create(ctx context.Context, key string, value []byte, lease int64) (int64, error)
 	Delete(ctx context.Context, key string, revision int64) (int64, *KeyValue, bool, error)
-	List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool) (int64, []*KeyValue, error)
-	Count(ctx context.Context, key, end string, revision int64) (int64, int64, error)
+	List(ctx context.Context, key, end string, limit, revision int64, keysOnly bool, labelSelector, fieldSelector string) (int64, []*KeyValue, error)
+	Count(ctx context.Context, key, end string, revision int64, labelSelector, fieldSelector string) (int64, int64, error)
 	Update(ctx context.Context, key string, value []byte, revision, lease int64) (int64, *KeyValue, bool, error)
-	Watch(ctx context.Context, key, end string, revision int64) WatchResult
+	Watch(ctx context.Context, key, end string, revision int64, labelSelector, fieldSelector string) WatchResult
 	DbSize(ctx context.Context) (int64, error)
 	CurrentRevision(ctx context.Context) (int64, error)
 	Compact(ctx context.Context, revision int64) (int64, error)
@@ -41,14 +45,14 @@ type Backend interface {
 }
 
 type Dialect interface {
-	ListCurrent(ctx context.Context, key, end string, limit int64, includeDeleted, keysOnly bool) (*sql.Rows, error)
-	List(ctx context.Context, key, end string, limit, revision int64, includeDeleted, keysOnly bool) (*sql.Rows, error)
-	CountCurrent(ctx context.Context, key, end string) (int64, int64, error)
-	Count(ctx context.Context, key, end string, revision int64) (int64, int64, int64, error)
+	ListCurrent(ctx context.Context, key, end string, limit int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (*sql.Rows, error)
+	List(ctx context.Context, key, end string, limit, revision int64, includeDeleted, keysOnly bool, labelSelector, fieldSelector string) (*sql.Rows, error)
+	CountCurrent(ctx context.Context, key, end string, labelSelector, fieldSelector string) (int64, int64, error)
+	Count(ctx context.Context, key, end string, revision int64, labelSelector, fieldSelector string) (int64, int64, int64, error)
 	CurrentRevision(ctx context.Context) (int64, error)
 	After(ctx context.Context, key, end string, rev, limit int64) (*sql.Rows, error)
 	//nolint:revive
-	Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value []byte) (int64, error)
+	Insert(ctx context.Context, key string, create, delete bool, createRevision, previousRevision int64, ttl int64, value, prevValue []byte) (int64, error)
 	DeleteRevision(ctx context.Context, revision int64) error
 	GetCompactRevision(ctx context.Context) (int64, error)
 	SetCompactRevision(ctx context.Context, revision int64) error
@@ -72,6 +76,7 @@ type Transaction interface {
 	Compact(ctx context.Context, revision int64) (int64, error)
 	DeleteRevision(ctx context.Context, revision int64) error
 	CurrentRevision(ctx context.Context) (int64, error)
+	InsertMetadata(ctx context.Context, id int64, key string, createRevision int64, value, prevValue []byte, obj runtime.Object, uid types.UID, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, finalizers []string, del bool) (err error)
 }
 
 type KeyValue struct {

@@ -38,6 +38,7 @@ var (
  			(
 				id BIGSERIAL PRIMARY KEY,
 				name text COLLATE "C",
+				uid VARCHAR(36),
 				created INTEGER,
 				deleted INTEGER,
 				create_revision BIGINT,
@@ -48,11 +49,38 @@ var (
  			);`,
 
 		`CREATE INDEX IF NOT EXISTS kine_name_index ON kine (name)`,
+		`CREATE INDEX IF NOT EXISTS kine_uid_index ON kine (uid)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS kine_name_prev_revision_uindex ON kine (name, prev_revision)`,
 		`CREATE INDEX IF NOT EXISTS kine_list_query_index on kine(name, id DESC, deleted)`,
+		`CREATE TABLE IF NOT EXISTS kine_labels
+			(
+				kine_id BIGINT,
+				kine_name VARCHAR(253),
+				name VARCHAR(63),
+				value VARCHAR(63),
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_labels_name_index ON kine_labels (kine_name, name, value)`,
+		`CREATE TABLE IF NOT EXISTS kine_fields
+			(
+				kine_id BIGINT,
+				kine_name VARCHAR(253),
+				value JSONB,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE INDEX IF NOT EXISTS kine_fields_value_index ON kine_fields USING GIN (value)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id BIGINT,
+				owner VARCHAR(36),
+				block_owner_deletion INTEGER DEFAULT 0,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine ALTER COLUMN id SET DATA TYPE BIGINT, ALTER COLUMN create_revision SET DATA TYPE BIGINT, ALTER COLUMN prev_revision SET DATA TYPE BIGINT; ALTER SEQUENCE kine_id_seq AS BIGINT`,
@@ -97,6 +125,16 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 				kd.id <= $2
 		) AS ks
 		WHERE kv.id = ks.id`, "$", true, "Compact")
+	dialect.SelectorLookupSQL = "value->>? LIKE CONCAT('%%', ?::TEXT, '%%')"
+	dialect.GetOwnedSQL = query.New(`
+		SELECT s.id, s.name, s.create_revision, s.value FROM (
+			SELECT DISTINCT ON (k.name)
+				k.id, k.name, k.create_revision, k.value, k.deleted
+			FROM kine_owners AS ko
+			LEFT JOIN kine AS k ON k.id = ko.kine_id
+			WHERE ko.owner = $1
+			ORDER BY k.name, k.id DESC
+		) AS s WHERE s.deleted = 0`, "$", true, "GetOwned")
 	dialect.FillRetryDuration = time.Millisecond + 5
 	dialect.InsertRetry = func(err error) bool {
 		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation && err.ConstraintName == "kine_pkey" {
