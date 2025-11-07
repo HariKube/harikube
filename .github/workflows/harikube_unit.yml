@@ -10,11 +10,13 @@ on:
     - dev-v**
     paths-ignore:
     - "**.md"
+    - "**.yaml"
 
   pull_request:
     branches: [main, master]
     paths-ignore:
     - "**.md"
+    - "**.yaml"
 
 concurrency: 
   group: ${{ github.ref_name }}-unit
