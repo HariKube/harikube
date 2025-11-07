@@ -39,6 +39,10 @@ jobs:
         TAG: ${{ github.sha }}
         VERSION: ${{ steps.extract_branch.outputs.branch }}
         COMMIT: ${{ github.sha }}
+    - name: Render manifests
+      run: make manifests
+      env:
+        VERSION: ${{ steps.extract_branch.outputs.branch }}
     - name: Login to registry
       uses: docker/login-action@v3
       with:
@@ -57,14 +61,28 @@ jobs:
         pre-body: |
             # Kine
             
+            This Kind version supports storage-side filtering.  You have to use a patched Kubernetes version to take full advantages.
+
             ## Docker
+
+            For standalon version, please use one of the pre-built [Kubernetes images](https://github.com/HariKube/kubernetes-patches/releases).
 
             ```bash
             docker pull ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/kine:${{ steps.extract_branch.outputs.branch }}
+            ```
+
+            ## Kubernetes with vCluster
+
+            You can run Kine on any cluster via vCluster.
+
+            ```bash
+            kubectl apply -f https://github.com/HariKube/kine/releases/download/${{ steps.extract_branch.outputs.branch }}/vcluster-kine-sqlite.yaml
+            vcluster connect kine
             ```
 
             ## Release Notes
 
         draft: true
         prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
+        files: hack/vcluster-kine-sqlite.yaml
   
