@@ -43,20 +43,17 @@ ci: validate build package
 test:
 	go test -cover -tags=test $(shell go list ./... | grep -v nats)
 
-MAKEFLAGS += --no-print-directory
+kine-release:
+	mkdir -p package
+	rm -f package/vcluster-kine-sqlite-$(TAG).yaml
 
-VERSION ?= snapshot
-
-.PHONY: manifests
-manifests:
-	@rm -rf package ; mkdir -p package
-	@cat hack/vcluster/vcluster-kine-sqlite.yaml | \
-		sed 's/#VERSION#/$(VERSION)/' \
-		> package/vcluster-kine-sqlite.yaml
-	@helm repo add loft-sh https://charts.loft.sh
-	@helm repo update
-	@helm template kine loft-sh/vcluster \
+	cat hack/vcluster/vcluster-kine-sqlite.yaml | \
+		sed 's/#VERSION#/$(TAG)/' \
+		> package/vcluster-kine-sqlite-$(TAG).yaml
+	helm repo add loft-sh https://charts.loft.sh
+	helm repo update
+	helm template kine loft-sh/vcluster \
 		--namespace kine \
 		--values hack/vcluster/api-config.yaml \
-		--set controlPlane.distro.k8s.image.tag=v1.34.1 \
-		>> package/vcluster-kine-sqlite.yaml
+		--set controlPlane.distro.k8s.image.tag=$$(grep tag hack/vcluster/api-config.yaml | awk '{print $$2}') \
+		>> package/vcluster-kine-sqlite-$(TAG).yaml
