@@ -5,7 +5,7 @@ controlPlane:
       image:
         registry: quay.io
         repository: harikube/kubernetes
-        # tag: v1.34.1
+        tag: v1.34.1
       imagePullPolicy: IfNotPresent
       apiServer:
         enabled: true
@@ -34,6 +34,8 @@ controlPlane:
       replicas: 1
 sync:
   toHost:
+    serviceAccounts:
+      enabled: true
     pods:
       enabled: false
     secrets:
