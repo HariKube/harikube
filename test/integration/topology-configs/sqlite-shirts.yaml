@@ -1,0 +1,13 @@
+apiVersion: harikube.info/v1
+kind: TopologyConfig
+metadata:
+  name: topologyconfig-shirts
+  namespace: harikube
+spec:
+  targetSecret: harikube/topology-config
+  backends:
+  - name: shirts
+    endpoint: sqlite:///db/shirts.db?_journal=WAL&cache=shared
+    customresource:
+      group: stable.example.com
+      kind: shirts
