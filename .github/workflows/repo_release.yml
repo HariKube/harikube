@@ -1,0 +1,57 @@
+name: repo release
+
+on:
+  release:
+    types:
+      - created
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GIT_TOKEN  }}
+
+jobs:
+  release-kine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+    - uses: actions/checkout@v4
+    - name: Render manifests
+      run: make kine-release
+      env:
+        TAG: ${{ github.ref_name }}
+    - name: Create release
+      if: ${{ !startsWith(github.ref, 'refs/heads/dev-') }}
+      uses: mhmxs/milestone-release-action@main
+      with:
+        milestone-title: ${{ github.ref_name }}
+        pre-body: |
+            # Kine
+            
+            This Kind version supports storage-side filtering.  You have to use a patched Kubernetes version to take full advantages.
+
+            ## Docker
+
+            For standalon version, please use one of the pre-built [Kubernetes images](https://github.com/HariKube/kubernetes-patches/releases).
+
+            ```bash
+            docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/kine:${{ github.ref_name }}
+            ```
+
+            ## Kubernetes with vCluster
+
+            You can run Kine on any cluster via vCluster.
+
+            ```bash
+            kubectl apply -f https://github.com/HariKube/kine/releases/download/${{ github.ref_name }}/vcluster-kine-sqlite-${{ github.ref_name }}.yaml
+            vcluster connect kine
+            ```
+
+            ## Release Notes
+
+        draft: true
+        prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
+        files: hack/vcluster-kine-sqlite-${{ github.ref_name }}.yaml
+  

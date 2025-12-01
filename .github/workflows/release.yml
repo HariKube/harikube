@@ -61,15 +61,16 @@ jobs:
         if: github.repository_owner != 'k3s-io'
         uses: docker/login-action@v3
         with:
+          registry: ${{ vars.DOCKER_REGISTRY }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Login to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.repository_owner }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push (k3s-io)
         if: github.repository_owner == 'k3s-io'
@@ -94,7 +95,5 @@ jobs:
           target: multi-arch-package
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/kine:latest
-            ${{ secrets.DOCKER_USERNAME }}/kine:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/kine:latest
-            ghcr.io/${{ github.repository_owner }}/kine:${{ github.ref_name }}
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository_owner }}/kine:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository_owner }}/kine:${{ github.ref_name }}
