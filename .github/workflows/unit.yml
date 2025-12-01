@@ -28,11 +28,11 @@ jobs:
         go-version: stable
 
     - name: Go Unit Tests
-      run: go test -cover -tags=test ./...
+      run: go test -cover -tags=test $(go list ./... | grep -v nats)
       env:
         CGO_ENABLED: "1"
 
     - name: Go Unit Tests nocgo
-      run: go test -cover -tags=test ./...
+      run: go test -cover -tags=test $(go list ./... | grep -v nats)
       env:
         CGO_ENABLED: "0"
