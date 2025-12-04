@@ -111,6 +111,8 @@ spec:
       - name: db-storage
         persistentVolumeClaim:
           claimName: kine-db-pvc
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
