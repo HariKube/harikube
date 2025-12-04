@@ -32,6 +32,30 @@ spec:
       labels:
         app: kine
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                    - arm64
+                    - amd64
+                    - s390x
+                    - ppc64le
+                - key: kubernetes.io/os
+                  operator: In
+                  values:
+                    - linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: kine
         image: quay.io/harikube/kine:#VERSION#
@@ -50,10 +74,33 @@ spec:
         volumeMounts:
         - name: db-storage
           mountPath: /db
+        - name: tmp
+          mountPath: /tmp
+        livenessProbe:
+          grpc:
+            port: 2379
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+          periodSeconds: 20
+          failureThreshold: 3
+        readinessProbe:
+          grpc:
+            port: 2379
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 10
+          failureThreshold: 3
         securityContext:
           allowPrivilegeEscalation: false
-          runAsGroup: 0
-          runAsUser: 0
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           limits:
             memory: 4Gi
