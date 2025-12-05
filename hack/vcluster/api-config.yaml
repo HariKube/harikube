@@ -51,5 +51,3 @@ sync:
   fromHost:
     events:
       enabled: false
-    nodes:
-      enabled: true
