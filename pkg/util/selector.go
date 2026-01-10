@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -185,6 +186,61 @@ func GetObjectByKey(key string) runtime.Object {
 	default:
 		return &metav1.PartialObjectMetadata{}
 	}
+}
+
+func GetUIDByObject(obj runtime.Object) (uid types.UID) {
+	switch obj := obj.(type) {
+	case *corev1.Pod:
+		uid = obj.UID
+	case *corev1.Event:
+		uid = obj.UID
+	case *corev1.Secret:
+		uid = obj.UID
+	case *corev1.Namespace:
+		uid = obj.UID
+	case *appsv1.ReplicaSet:
+		uid = obj.UID
+	case *corev1.ReplicationController:
+		uid = obj.UID
+	case *batchv1.Job:
+		uid = obj.UID
+	case *corev1.Node:
+		uid = obj.UID
+	case *certv1.CertificateSigningRequest:
+		uid = obj.UID
+	case *metav1.PartialObjectMetadata:
+		uid = obj.UID
+	}
+
+	return
+}
+
+func GetOwnersByObject(obj runtime.Object) []metav1.OwnerReference {
+	switch obj := obj.(type) {
+	case *corev1.Pod:
+		return obj.OwnerReferences
+	case *corev1.Event:
+		return obj.OwnerReferences
+	case *corev1.Secret:
+		return obj.OwnerReferences
+	case *corev1.Namespace:
+		return obj.OwnerReferences
+	case *appsv1.ReplicaSet:
+		return obj.OwnerReferences
+	case *corev1.ReplicationController:
+		return obj.OwnerReferences
+	case *batchv1.Job:
+		return obj.OwnerReferences
+	case *corev1.Node:
+		return obj.OwnerReferences
+	case *certv1.CertificateSigningRequest:
+		return obj.OwnerReferences
+	case *metav1.PartialObjectMetadata:
+		return obj.OwnerReferences
+	default:
+		return []metav1.OwnerReference{}
+	}
+
 }
 
 func GetLabelsSetByObject(obj runtime.Object) (ls labels.Set) {
