@@ -58,6 +58,12 @@ var (
 				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id INTEGER,
+				owner INTEGER,
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
 	}
 )
 

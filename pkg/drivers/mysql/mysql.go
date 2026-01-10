@@ -63,6 +63,12 @@ var (
 				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
 			) ENGINE=InnoDB;`,
 		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id BIGINT UNSIGNED,
+				owner VARCHAR(36),
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			) ENGINE=InnoDB;`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT, MODIFY COLUMN create_revision BIGINT UNSIGNED, MODIFY COLUMN prev_revision BIGINT UNSIGNED`,
