@@ -80,6 +80,8 @@ type Generic struct {
 
 	InsertLabelSQL    string
 	InsertFieldsSQL   string
+	InsertOwnerSQL    string
+	GetOwnedSQL       string
 	SelectorLookupSQL string
 
 	LockWrites              bool
@@ -223,6 +225,14 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 			values(?, ?, ?, ?)`, paramCharacter, numbered),
 		InsertFieldsSQL: q(`INSERT INTO kine_fields(kine_id, kine_name, value)
 			values(?, ?, ?)`, paramCharacter, numbered),
+		InsertOwnerSQL: q(`INSERT INTO kine_owners(kine_id, owner)
+			values(?, ?)`, paramCharacter, numbered),
+		GetOwnedSQL: q(`
+			SELECT ko.kine_id, k.name, k.create_revision, k.value
+			FROM kine_owners AS ko
+			RIGHT JOIN kine AS k ON k.id = ko.kine_id
+			WHERE ko.owner = ? AND k.deleted = 0
+			GROUP BY k.name HAVING MAX(k.id) = MAX(ko.kine_id)`, paramCharacter, numbered),
 
 		DB: db,
 
@@ -544,7 +554,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	var g generic = d
-	obj, labels, fieldsSet, dErr := decodeObject(key, value)
+	obj, labels, fieldsSet, owners, dErr := decodeObject(key, value)
 	if dErr != nil {
 		err = dErr
 
@@ -552,16 +562,22 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	if len(labels) > 0 || !fieldsSet.AsSelector().Empty() || delete {
-		t, tbErr := d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-		if tbErr != nil {
-			err = tbErr
+		var t server.Transaction
+		if at := ctx.Value(txKey); at != nil {
+			t = at.(server.Transaction)
+		} else {
+			var tbErr error
+			t, tbErr = d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+			if tbErr != nil {
+				err = tbErr
 
-			return
+				return
+			}
 		}
 
 		g = t.(generic)
 		defer func() {
-			if err != nil {
+			if ctx.Value(txKey) == nil && err != nil {
 				if rbErr := t.Rollback(); rbErr != nil {
 					err = errors.Join(err, rbErr)
 				}
@@ -569,14 +585,16 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 				return
 			}
 
-			if err = t.InsertMetadata(ctx, id, key, obj, labels, fieldsSet, delete, createRevision, previousRevision); err != nil {
+			if err = t.InsertMetadata(ctx, id, key, obj, labels, fieldsSet, owners, delete, createRevision, previousRevision); err != nil {
 				id = 0
 
 				return
 			}
 
-			if err = t.Commit(); err != nil {
-				id = 0
+			if ctx.Value(txKey) == nil {
+				if err = t.Commit(); err != nil {
+					id = 0
+				}
 			}
 		}()
 	}

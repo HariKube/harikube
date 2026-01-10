@@ -11,8 +11,17 @@ import (
 	"github.com/k3s-io/kine/pkg/server"
 	"github.com/k3s-io/kine/pkg/util"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+)
+
+type contextKey int
+
+const (
+	txKey contextKey = iota
 )
 
 // explicit interface check
@@ -134,13 +143,23 @@ func (t *Tx) execute(ctx context.Context, sql string, args ...any) (result sql.R
 }
 
 //nolint:revive
-func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runtime.Object, labels map[string]string, fieldsSet fields.Set, delete bool, createRevision, previousRevision int64) (err error) {
+func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runtime.Object, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, delete bool, createRevision, previousRevision int64) (err error) {
 	metadataSQLs := []struct {
 		sql  string
 		args []any
 	}{}
 
 	if !delete {
+		for _, owner := range owners {
+			metadataSQLs = append(metadataSQLs, struct {
+				sql  string
+				args []any
+			}{
+				sql:  t.d.InsertOwnerSQL,
+				args: []any{id, owner.UID},
+			})
+		}
+
 		for k, v := range labels {
 			metadataSQLs = append(metadataSQLs, struct {
 				sql  string
@@ -170,6 +189,62 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				args: []any{id, key, jsonData},
 			})
 		}
+	} else if labels["skip-controller-manager-metadata-caching"] == "true" {
+		uid := util.GetUIDByObject(obj)
+
+		rows, err := t.query(ctx, t.d.GetOwnedSQL, uid)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				return err
+			}
+		}
+
+		for rows.Next() {
+			var ownedKey string
+			var ownedValue []byte
+			var ownedId, ownedCreateRevision int64
+			if err = rows.Scan(&ownedId, &ownedKey, &ownedCreateRevision, &ownedValue); err != nil {
+				return err
+			} else if ownedId == 0 {
+				continue
+			}
+
+			ownedObj := &unstructured.Unstructured{}
+			if _, _, err := unstructuredDecoder.Decode(ownedValue, nil, ownedObj); err != nil {
+				return err
+			}
+
+			if ownedObj.GetLabels()["skip-controller-manager-metadata-caching"] != "true" {
+				continue
+			} else if len(ownedObj.GetFinalizers()) == 0 {
+				if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), ownedKey, false, true, ownedCreateRevision, ownedId, 0, nil, ownedValue); err != nil {
+					return err
+				}
+			} else if ownedObj.GetDeletionTimestamp() == nil {
+				ownedObj.SetDeletionTimestamp(&v1.Time{Time: time.Now()})
+
+				ownedNewValue, err := jsoniter.Marshal(ownedObj)
+				if err != nil {
+					return err
+				}
+
+				if t.d.LastInsertID {
+					metadataSQLs = append(metadataSQLs, struct {
+						sql  string
+						args []any
+					}{
+						sql:  t.d.InsertLastInsertIDSQL,
+						args: []any{ownedKey, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
+					})
+				} else {
+					if err := t.queryRow(ctx, t.d.InsertSQL, ownedKey, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue).Err(); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		rows.Close()
 	}
 
 	for _, meta := range metadataSQLs {
