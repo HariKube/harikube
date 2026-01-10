@@ -68,6 +68,12 @@ var (
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
 		`CREATE INDEX IF NOT EXISTS kine_fields_value_index ON kine_fields USING GIN (value)`,
+		`CREATE TABLE IF NOT EXISTS kine_owners
+			(
+				kine_id BIGINT,
+				owner VARCHAR(36),
+				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine ALTER COLUMN id SET DATA TYPE BIGINT, ALTER COLUMN create_revision SET DATA TYPE BIGINT, ALTER COLUMN prev_revision SET DATA TYPE BIGINT; ALTER SEQUENCE kine_id_seq AS BIGINT`,
