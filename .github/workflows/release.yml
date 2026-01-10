@@ -42,6 +42,7 @@ jobs:
           subject-path: dist/artifacts/kine-*
 
       - name: Upload binaries to release
+        if: github.repository_owner == 'k3s-io'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: |
@@ -74,7 +75,7 @@ jobs:
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       
       # - name: Login to GitHub Container Registry
@@ -84,17 +85,31 @@ jobs:
       #     username: ${{ github.repository_owner }}
       #     password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push (k3s-io)
+        if: github.repository_owner == 'k3s-io'
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
-        id: build
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
           context: .
           target: multi-arch-package
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository_owner }}/kine:latest
-            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository_owner }}/kine:${{ github.ref_name }}
+            rancher/kine:latest
+            rancher/kine:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/kine:latest
+            ghcr.io/${{ github.repository_owner }}/kine:${{ github.ref_name }}
+
+      - name: Build and push (forks)
+        if: github.repository_owner != 'k3s-io'
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
+          context: .
+          target: multi-arch-package
+          push: true
+          tags: |
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/kine:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/kine:${{ github.ref_name }}
       
       - name: Attest images
         if: github.repository_owner == 'k3s-io'
