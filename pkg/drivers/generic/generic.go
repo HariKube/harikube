@@ -228,11 +228,14 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 		InsertOwnerSQL: q(`INSERT INTO kine_owners(kine_id, owner)
 			values(?, ?)`, paramCharacter, numbered),
 		GetOwnedSQL: q(`
-			SELECT ko.kine_id, k.name, k.create_revision, k.value
-			FROM kine_owners AS ko
-			RIGHT JOIN kine AS k ON k.id = ko.kine_id
-			WHERE ko.owner = ? AND k.deleted = 0
-			GROUP BY k.name HAVING MAX(k.id) = MAX(ko.kine_id)`, paramCharacter, numbered),
+			SELECT s.id, s.name, s.create_revision, s.value FROM (
+				SELECT MAX(k.id) AS id, k.name, k.create_revision, k.value, k.deleted
+				FROM kine_owners AS ko
+				LEFT JOIN kine AS k ON k.id = ko.kine_id
+				WHERE ko.owner = ?
+				GROUP BY k.name
+				HAVING k.deleted = 0
+			) AS s`, paramCharacter, numbered),
 
 		DB: db,
 

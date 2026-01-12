@@ -198,6 +198,7 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				return err
 			}
 		}
+		defer rows.Close()
 
 		for rows.Next() {
 			var ownedKey string
@@ -243,8 +244,6 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				}
 			}
 		}
-
-		rows.Close()
 	}
 
 	for _, meta := range metadataSQLs {
