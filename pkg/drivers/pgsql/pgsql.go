@@ -164,6 +164,15 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 	dialect.GetRevisionAfterValSQL = q(fmt.Sprintf(listValSQL, "AND kv.name >= ? AND kv.id <= ?"))
 	dialect.CountCurrentSQL = q(fmt.Sprintf(countSQL, "AND kv.name >= ?"))
 	dialect.CountRevisionSQL = q(fmt.Sprintf(countSQL, "AND kv.name >= ? AND kv.id <= ?"))
+	dialect.GetOwnedSQL = `
+		SELECT s.id, s.name, s.create_revision, s.value FROM (
+			SELECT DISTINCT ON (k.name)
+				k.id, k.name, k.create_revision, k.value, k.deleted
+			FROM kine_owners AS ko
+			LEFT JOIN kine AS k ON k.id = ko.kine_id
+			WHERE ko.owner = $1
+			ORDER BY k.name, k.id DESC
+		) AS s WHERE s.deleted = 0`
 	dialect.FillRetryDuration = time.Millisecond + 5
 	dialect.InsertRetry = func(err error) bool {
 		if err, ok := err.(*pgconn.PgError); ok && err.Code == pgerrcode.UniqueViolation && err.ConstraintName == "kine_pkey" {
