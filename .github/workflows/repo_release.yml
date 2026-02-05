@@ -49,7 +49,24 @@ jobs:
             vcluster connect kine
             ```
 
-            > For access control, the vCluster setup keeps things simple: It is only configured to copy your ServiceAccount resources to the underlying (host) cluster. This means you should create all of your RBAC (Role-Based Access Control) policies (like Roles and RoleBindings) directly on your virtual cluster. Your deployed workloads on the host can then use the synchronized ServiceAccount on the host cluster, ensuring they have the correct permissions.
+            > For access control, the vCluster setup keeps things simple. Create your ServiceAccount, generate a secret with the command below, and vCluster will sync the secret to the host cluster.
+
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: remote-your-service-account-name
+              annotations:
+                kubernetes.io/service-account.name: "your-service-account-name"
+            type: kubernetes.io/service-account-token
+            ```
+
+            On the host cluster you can fetch the connection details.
+
+            ```bash
+            TOKEN=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.token}' | base64 -d)
+            CA_CERT=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.ca\.crt}' | base64 -d)
+            ```
 
             ## Release Notes
 
