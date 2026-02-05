@@ -35,11 +35,12 @@ controlPlane:
 sync:
   toHost:
     serviceAccounts:
-      enabled: true
+      enabled: false
     pods:
       enabled: false
     secrets:
-      enabled: false
+      enabled: true
+      all: true
     configMaps:
       enabled: false
     services:
