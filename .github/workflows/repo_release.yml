@@ -50,6 +50,9 @@ jobs:
             # This creates the virtual cluster resources
             kubectl apply -f https://github.com/HariKube/kine/releases/download/release-v0.14.6/vcluster-kine-sqlite-release-v0.14.6.yaml
 
+            # Wait for readiness
+            kubectl wait -n kine --for=jsonpath='{.status.readyReplicas}'=1 statefulset/kine --timeout=5m
+
             # This connects your local terminal to the new virtual cluster
             vcluster connect kine
             ```
@@ -71,6 +74,7 @@ jobs:
             On the host cluster, you can fetch the connection details.
 
             ```bash
+            KUBE_API_URL=kine.kine.svc.cluster.local
             TOKEN=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.token}' | base64 -d)
             CA_CERT=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.ca\.crt}' | base64 -d)
             ```
@@ -149,7 +153,7 @@ jobs:
 
             To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is sending.
 
-            - [Kubernetes Patched](https://github.com/HariKube/kubernetes-patches)
+            - [Kubernetes Patches](https://github.com/HariKube/kubernetes-patches)
             - [Patched Images](https://quay.io/repository/harikube/kubernetes?tab=tags&tag=latest)
 
             ## Release Notes
