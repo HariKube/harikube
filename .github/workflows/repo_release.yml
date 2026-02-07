@@ -151,7 +151,7 @@ jobs:
 
             ## Important Requirement
 
-            To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is sending.
+            To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is waiting for.
 
             - [Kubernetes Patches](https://github.com/HariKube/kubernetes-patches)
             - [Patched Images](https://quay.io/repository/harikube/kubernetes?tab=tags&tag=latest)
