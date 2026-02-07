@@ -83,7 +83,7 @@ jobs:
 
             ## Storage-side Garbage-Collection
 
-            Garbage-collection (GC) keeps your database from getting bloated. This version of Kine looks for a specific label on your resources: `skip-controller-manager-metadata-caching="true"`. Otherwise, Kubernetes Controller Manager will keep records in memory, which should kill performance.
+            Garbage-collection (GC) keeps your database from getting bloated. This version of Kine looks for a specific label on your resources: `skip-controller-manager-metadata-caching`. Otherwise, Kubernetes Controller Manager will keep records in memory, which should kill performance.
 
             The "Auto-Label" Trick
 
@@ -117,7 +117,7 @@ jobs:
                           JSONPatch{
                             op: "add",
                             path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                            value: "true"
+                            value: ""
                           }
                         ]
                       : [
@@ -129,7 +129,7 @@ jobs:
                           JSONPatch{
                             op: "add",
                             path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                            value: "true"
+                            value: ""
                           }
                         ]
             ---
