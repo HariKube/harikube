@@ -189,7 +189,7 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				args: []any{id, key, jsonData},
 			})
 		}
-	} else if labels["skip-controller-manager-metadata-caching"] == "true" {
+	} else if _, ok := labels["skip-controller-manager-metadata-caching"]; ok {
 		uid := util.GetUIDByObject(obj)
 
 		rows, err := t.query(ctx, t.d.GetOwnedSQL, uid)
@@ -215,7 +215,7 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				return err
 			}
 
-			if ownedObj.GetLabels()["skip-controller-manager-metadata-caching"] != "true" {
+			if _, ok := ownedObj.GetLabels()["skip-controller-manager-metadata-caching"]; !ok {
 				continue
 			} else if len(ownedObj.GetFinalizers()) == 0 {
 				if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), ownedKey, false, true, ownedCreateRevision, ownedId, 0, nil, ownedValue); err != nil {
