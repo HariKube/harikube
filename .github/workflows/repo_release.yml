@@ -48,7 +48,7 @@ jobs:
 
             ```bash
             # This creates the virtual cluster resources
-            kubectl apply -f https://github.com/HariKube/kine/releases/download/release-v0.14.6/vcluster-kine-sqlite-release-v0.14.6.yaml
+            kubectl apply -f https://github.com/HariKube/kine/releases/download/${{ github.ref_name }}/vcluster-kine-sqlite-${{ github.ref_name }}.yaml
 
             # Wait for readiness
             kubectl wait -n kine --for=jsonpath='{.status.readyReplicas}'=1 statefulset/kine --timeout=5m
