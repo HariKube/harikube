@@ -33,6 +33,8 @@ jobs:
 
             This specific version of Kine is special because it handles filtering and garbage-collection directly at the database level, which can make your cluster much faster and more efficient.
 
+            Standard Kine is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced edition introduces advanced data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
+
             ## Installation: The vCluster Method
 
             The easiest way to use this setup is inside a vCluster (a virtual cluster running inside your real cluster). This keeps everything bundled together.
