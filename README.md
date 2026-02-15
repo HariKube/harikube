@@ -17,13 +17,9 @@ Here are some benchmark results on Ultra 7 165H 18 Core 4G, single VM ran everyt
 - Vanilla Kubernetes with 3 node ETCD cluster:
 
 ```
-checks_total.......: 51236 24.976013/s
 checks_succeeded...: 100.00% 51236 out of 51236
 checks_failed......: 0.00% 0 out of 51236
-
-HTTP
 http_req_duration..............: avg=799.54ms min=3.87ms med=82.39ms max=4.17s p(90)=2.47s p(95)=2.82s
-  { expected_response:true }...: avg=799.54ms min=3.87ms med=82.39ms max=4.17s p(90)=2.47s p(95)=2.82s
 http_req_failed................: 0.00% 0 out of 51236
 http_reqs......................: 51236 24.976013/s
 
@@ -35,13 +31,9 @@ OOM Killed, thanks API server
 - HariKube OSS with Postgres:
 
 ```
-checks_total.......: 101772  28.188433/s
 checks_succeeded...: 100.00% 101772 out of 101772
 checks_failed......: 0.00%   0 out of 101772
-
-HTTP
 http_req_duration..............: avg=708.33ms min=6.4ms    med=300.67ms max=6.2s  p(90)=1.99s p(95)=2.48s
-  { expected_response:true }...: avg=708.33ms min=6.4ms    med=300.67ms max=6.2s  p(90)=1.99s p(95)=2.48s
 http_req_failed................: 0.00%  0 out of 101772
 http_reqs......................: 101772 28.188433/s
 ```
@@ -75,14 +67,14 @@ http_reqs......................: 429180 119.106435/s
 
 | Metric | HariKube AE | Vanilla K8s | Gain  |
 | - | - | - | - |
-|Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8×  |
-|Success Rate | 100% ✅  | 100% (then OOM) ❌ | not comparable  |
-|Latency average | 167ms ✅ | 799ms ❌  | 4.8× |
-|Latency p95 | 543ms ✅  | 2820ms ❌ | 5.2×  |
-|Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2×  |
-|Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable  |
-|Stability | Completed ✅ | KILLED ❌ | not comparable  |
-|Objects Handled | 200k+ ✅  | ~26k (crashed) ❌  | 8×    |
+| Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8×  |
+| Success Rate | 100% ✅ | 100% (then OOM) ❌ | not comparable  |
+| Latency average | 167ms ✅ | 799ms ❌ | 4.8× |
+| Latency p95 | 543ms ✅ | 2820ms ❌ | 5.2× |
+| Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2× |
+| Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable  |
+| Stability | Completed ✅ | KILLED ❌ | not comparable |
+| Objects Handled | 200k+ ✅ | ~26k (crashed) ❌  | 8× |
 
 Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
 
@@ -107,7 +99,7 @@ kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/
 # This connects your local terminal to the new virtual cluster
 vcluster connect harikube
 
-# This creates and admission policy to disable metadata caching
+# This creates and admission policy to disable metadata caching of your resources
 kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/skip-controller-manager-metadata-caching.yaml
 ```
 
