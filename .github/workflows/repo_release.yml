@@ -44,13 +44,9 @@ jobs:
             - Vanilla Kubernetes with 3 node ETCD cluster:
 
             ```
-            checks_total.......: 51236 24.976013/s
             checks_succeeded...: 100.00% 51236 out of 51236
             checks_failed......: 0.00% 0 out of 51236
-
-            HTTP
             http_req_duration..............: avg=799.54ms min=3.87ms med=82.39ms max=4.17s p(90)=2.47s p(95)=2.82s
-              { expected_response:true }...: avg=799.54ms min=3.87ms med=82.39ms max=4.17s p(90)=2.47s p(95)=2.82s
             http_req_failed................: 0.00% 0 out of 51236
             http_reqs......................: 51236 24.976013/s
 
@@ -62,13 +58,9 @@ jobs:
             - HariKube OSS with Postgres:
 
             ```
-            checks_total.......: 101772  28.188433/s
             checks_succeeded...: 100.00% 101772 out of 101772
             checks_failed......: 0.00%   0 out of 101772
-
-            HTTP
             http_req_duration..............: avg=708.33ms min=6.4ms    med=300.67ms max=6.2s  p(90)=1.99s p(95)=2.48s
-              { expected_response:true }...: avg=708.33ms min=6.4ms    med=300.67ms max=6.2s  p(90)=1.99s p(95)=2.48s
             http_req_failed................: 0.00%  0 out of 101772
             http_reqs......................: 101772 28.188433/s
             ```
@@ -78,7 +70,7 @@ jobs:
             | Metric | HariKube OSS | Vanilla K8s |
             | - | - | - |
             |Throughput | 28 req/s ✅ | 25 req/s ❌ |
-            |Success Rate | 100% ✅| 100% (OOM) ❌ |
+            |Success Rate | 100% ✅ | 100% (OOM) ❌ |
             |Latency average | 708ms ✅ | 799ms ❌  |
             |Latency p95 | 2480ms ✅ | 2820ms ❌ |
             |Latency p90 | 1990ms ✅ | 2470ms ❌ |
@@ -89,13 +81,9 @@ jobs:
             ### HariKube on steroids with 6 Postgres
 
             ```
-            checks_total.......: 429180 119.106435/s
             checks_succeeded...: 100.00% 429180 out of 429180
             checks_failed......: 0.00% 0 out of 429180
-
-            HTTP
             http_req_duration..............: avg=167.17ms min=7.75ms med=71.06ms max=3.71s p(90)=398ms p(95)=543.76ms
-              { expected_response:true }...: avg=167.17ms min=7.75ms med=71.06ms max=3.71s p(90)=398ms p(95)=543.76ms
             http_req_failed................: 0.00% 0 out of 429180
             http_reqs......................: 429180 119.106435/s
             ```
@@ -134,7 +122,7 @@ jobs:
             # This connects your local terminal to the new virtual cluster
             vcluster connect harikube
 
-            # This creates and admission policy to disable metadata caching
+            # This creates and admission policy to disable metadata caching of your resources
             kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/skip-controller-manager-metadata-caching.yaml
             ```
 
