@@ -82,7 +82,7 @@ http_reqs......................: 429180 119.106435/s
 |Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2×  |
 |Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable  |
 |Stability | Completed ✅ | KILLED ❌ | not comparable  |
-|Objects Handled | 200k+ ✅  | ~26k (crashed) ❌  | 4×    |
+|Objects Handled | 200k+ ✅  | ~26k (crashed) ❌  | 8×    |
 
 Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
 
