@@ -12,12 +12,15 @@ controlPlane:
         extraArgs:
         - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true
         - --watch-cache=false
-        - --etcd-servers=http://kine-svc.kine:2379
+        - --enable-garbage-collector=false
+        - --etcd-servers=http://harikube-svc.harikube:2379
         - --runtime-config=admissionregistration.k8s.io/v1beta1=true
         - --max-requests-inflight=900
         - --max-mutating-requests-inflight=300
       controllerManager:
         enabled: true
+        extraArgs:
+        - --enable-garbage-collector=false
       scheduler:
         enabled: false
   coredns:

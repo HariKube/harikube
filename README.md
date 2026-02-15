@@ -100,13 +100,17 @@ Run these commands to create your virtual cluster using a pre-configured SQLite 
 
 ```bash
 # This creates the virtual cluster resources
-kubectl apply -f https://github.com/HariKube/kine/releases/download/release-v0.14.11/vcluster-kine-sqlite-release-v0.14.11.yaml
+# Edit .spec.template.spec.containers.harikube.args to configure database
+kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/vcluster-harikube-sqlite-release-v0.14.11.yaml
 
 # Wait for readiness
-kubectl wait -n kine --for=jsonpath='{.status.readyReplicas}'=1 statefulset/kine --timeout=5m
+kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
 
 # This connects your local terminal to the new virtual cluster
-vcluster connect kine
+vcluster connect harikube
+
+# This creates and admission policty to disable metadata caching
+kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/skip-controller-manager-metadata-caching.yaml
 ```
 
 > 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
@@ -126,84 +130,24 @@ type: kubernetes.io/service-account-token
 On the host cluster, you can fetch the connection details.
 
 ```bash
-KUBE_API_URL=kine.kine.svc.cluster.local
-TOKEN=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.token}' | base64 -d)
-CA_CERT=$(kubectl get secret -n kine remote-your-service-account-name-x-default-x-kine -o jsonpath='{.data.ca\.crt}' | base64 -d)
+KUBE_API_URL=harikube.harikube.svc.cluster.local
+TOKEN=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.token}' | base64 -d)
+CA_CERT=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.ca\.crt}' | base64 -d)
 ```
 
 - Step C: Enjoy
 
-## Storage-side Garbage-Collection
-
-Garbage-collection (GC) keeps your database from getting bloated. This version of Kine looks for a specific label on your resources: `skip-controller-manager-metadata-caching`. Otherwise, Kubernetes Controller Manager will keep records in memory, which should kill performance.
-
-The "Auto-Label" Trick
-
-Instead of adding that label to every single pod or service by hand, you can use a `MutatingAdmissionPolicy`. Think of this as an automated "bouncer" that stamps every new resource with the required label as it enters the cluster.
-
-```yaml
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingAdmissionPolicy
-metadata:
-  name: "skip-controller-manager-metadata-caching"
-spec:
-  matchConstraints:
-    resourceRules:
-    - apiGroups:   ["*"]
-      apiVersions: ["*"]
-      operations:  ["CREATE"]
-      resources:   ["*"]
-  matchConditions:
-    - name: label-does-not-exist
-      expression: >
-          !has(object.metadata.labels) ||
-          !('skip-controller-manager-metadata-caching' in object.metadata.labels)
-  failurePolicy: Fail
-  reinvocationPolicy: IfNeeded
-  mutations:
-    - patchType: JSONPatch
-      jsonPatch:
-        expression: >
-          has(object.metadata.labels)
-          ? [
-              JSONPatch{
-                op: "add",
-                path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                value: ""
-              }
-            ]
-          : [
-              JSONPatch{
-                op: "add",
-                path: "/metadata/labels",
-                value: {}
-              },
-              JSONPatch{
-                op: "add",
-                path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                value: ""
-              }
-            ]
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingAdmissionPolicyBinding
-metadata:
-  name: "skip-controller-manager-metadata-caching"
-spec:
-  policyName: "skip-controller-manager-metadata-caching"
-  matchResources:
-    resourceRules:
-    - apiGroups:   ["*"]
-      apiVersions: ["*"]
-      operations:  ["CREATE"]
-      resources:   ["*"]
-```
-
-Applying the YAML provided in your notes will ensure that everything in your cluster is eligible for storage-side garbage-collection without any manual work.
-
 ## Important Requirement
 
-To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is waiting for.
+To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions HariKube is waiting for.
 
 - [Kubernetes Patches](https://github.com/HariKube/kubernetes-patches)
 - [Patched Images](https://quay.io/repository/harikube/kubernetes?tab=tags&tag=latest)
+
+## 🙏 Share Feedback and Report Issues
+
+Your feedback is invaluable in helping us improve this operator. If you encounter any issues, have a suggestion for a new feature, or simply want to share your experience, we want to hear from you!
+
+- Report Bugs: If you find a bug, please open a [GitHub Issue](https://github.com/HariKube/harikube/issues). Include as much detail as possible, such as steps to reproduce the bug, expected behavior, and your environment (e.g., Kubernetes version).
+- Request a Feature: If you have an idea for a new feature, open a [GitHub Issue](https://github.com/HariKube/harikube/issues) and use the `enhancement` label. Describe the use case and how the new feature would benefit the community.
+- Ask a Question: For general questions or discussions, please use the [GitHub Discussions](https://github.com/HariKube/harikube/discussions).
