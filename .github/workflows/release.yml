@@ -105,8 +105,8 @@ jobs:
           target: multi-arch-package
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/kine:latest
-            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/kine:${{ github.ref_name }}
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:${{ github.ref_name }}
       
       - name: Attest images
         if: github.repository_owner == 'k3s-io'
