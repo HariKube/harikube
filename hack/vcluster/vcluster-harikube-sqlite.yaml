@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kine
+  name: harikube
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: kine-db-pvc
-  namespace: kine
+  name: harikube-db-pvc
+  namespace: harikube
 spec:
   accessModes:
     - ReadWriteOnce
@@ -18,19 +18,19 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kine
-  namespace: kine
+  name: harikube
+  namespace: harikube
   labels:
-    app: kine
+    app: harikube
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kine
+      app: harikube
   template:
     metadata:
       labels:
-        app: kine
+        app: harikube
     spec:
       affinity:
         nodeAffinity:
@@ -57,13 +57,13 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: kine
-        image: quay.io/harikube/kine:#VERSION#
+      - name: harikube
+        image: quay.io/harikube/harikube:#VERSION#
         imagePullPolicy: IfNotPresent
         args:
         - --listen-address=0.0.0.0:2379
         - --datastore-max-idle-connections=5
-        - --datastore-max-open-connections=90
+        - --datastore-max-open-connections=9
         - --datastore-connection-max-lifetime=5m
         - --endpoint=sqlite:///db/main.db?_journal=WAL&cache=shared
         ports:
@@ -110,19 +110,19 @@ spec:
       volumes:
       - name: db-storage
         persistentVolumeClaim:
-          claimName: kine-db-pvc
+          claimName: harikube-db-pvc
       - name: tmp
         emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kine-svc
-  namespace: kine
+  name: harikube-svc
+  namespace: harikube
 spec:
   type: ClusterIP 
   selector:
-    app: kine
+    app: harikube
   ports:
     - name: api
       protocol: TCP
@@ -132,15 +132,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kine-metrics
-  namespace: kine
+  name: harikube-metrics
+  namespace: harikube
   labels:
-    app: kine
+    app: harikube
     app.kubernetes.io/component: metrics 
 spec:
   type: ClusterIP 
   selector:
-    app: kine
+    app: harikube
   ports:
     - name: metrics
       protocol: TCP
