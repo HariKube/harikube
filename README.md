@@ -54,13 +54,9 @@ http_reqs......................: 101772 28.188433/s
 ### HariKube on steroids with 6 Postgres
 
 ```
-checks_total.......: 429180  119.106435/s
 checks_succeeded...: 100.00% 429180 out of 429180
 checks_failed......: 0.00%   0 out of 429180
-
-HTTP
 http_req_duration..............: avg=167.17ms min=7.75ms   med=71.06ms max=3.71s  p(90)=398ms p(95)=543.76ms
-  { expected_response:true }...: avg=167.17ms min=7.75ms   med=71.06ms max=3.71s  p(90)=398ms p(95)=543.76ms
 http_req_failed................: 0.00%  0 out of 429180
 http_reqs......................: 429180 119.106435/s
 ```
