@@ -52,10 +52,9 @@ http_reqs......................: 101772 28.188433/s
 | - | - | - |
 |Throughput | 28 req/s ✅ | 25 req/s ❌ |
 |Success Rate | 100% ✅| 100% (OOM) ❌ |
-|Latency median | 300ms ❌ | 82ms ✅  |
-|Latency p95 | 2480ms | 2820ms  |
+|Latency average | 708ms ✅ | 799ms ❌  |
+|Latency p95 | 2480ms ✅ | 2820ms ❌ |
 |Latency p90 | 1990ms ✅ | 2470ms ❌ |
-|Latency max | 6.20s ❌ | 4.17s ✅ |
 |Test Duration | 60m ✅ | ~34m (OOM) ❌ |
 |Stability | Completed ✅  | KILLED ❌ |
 |Objects Handled | 50k ✅ | ~26k (OOM) ❌  |
@@ -78,10 +77,9 @@ http_reqs......................: 429180 119.106435/s
 | - | - | - | - |
 |Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8×  |
 |Success Rate | 100% ✅  | 100% (then OOM) ❌ | not comparable  |
-|Latency median | 71ms ✅ | 1.15× ❌  | 1.15× |
+|Latency average | 167ms ✅ | 799ms ❌  | 4.8× |
 |Latency p95 | 543ms ✅  | 2820ms ❌ | 5.2×  |
 |Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2×  |
-|Latency max | 3.71s | 4.17s ❌ | Similar  |
 |Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable  |
 |Stability | Completed ✅ | KILLED ❌ | not comparable  |
 |Objects Handled | 200k+ ✅  | ~26k (crashed) ❌  | 4×    |
@@ -109,7 +107,7 @@ kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/
 # This connects your local terminal to the new virtual cluster
 vcluster connect harikube
 
-# This creates and admission policty to disable metadata caching
+# This creates and admission policy to disable metadata caching
 kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/skip-controller-manager-metadata-caching.yaml
 ```
 
