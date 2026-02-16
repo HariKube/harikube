@@ -15,6 +15,7 @@ controlPlane:
         - --enable-garbage-collector=false
         - --etcd-servers=http://harikube-svc.harikube:2379
         - --runtime-config=admissionregistration.k8s.io/v1beta1=true
+        - --storage-media-type=application/json
         - --max-requests-inflight=900
         - --max-mutating-requests-inflight=300
       controllerManager:
