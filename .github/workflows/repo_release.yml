@@ -31,7 +31,7 @@ jobs:
 
             Normally, Kubernetes uses a database called ETCD. [Kine](https://github.com/k3s-io/kine) (the origin of this project) is a tool that allows Kubernetes to use other databases (like SQLite or PostgreSQL) instead.
 
-            This specific version of Kine is unique because it handles filtering and garbage-collection directly at the database level, which can make your cluster much faster and more efficient.
+            This specific version of Kine is unique because it handles filtering adirectly at the database level, which can make your cluster much faster and more efficient.
 
             ## Why this fork exists?
 
