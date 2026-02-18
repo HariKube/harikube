@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -68,7 +69,7 @@ type Transaction interface {
 	Compact(ctx context.Context, revision int64) (int64, error)
 	DeleteRevision(ctx context.Context, revision int64) error
 	CurrentRevision(ctx context.Context) (int64, error)
-	InsertMetadata(ctx context.Context, id int64, key string, obj runtime.Object, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, del bool, createRevision, previousRevision int64) (err error)
+	InsertMetadata(ctx context.Context, id int64, key string, createRevision int64, value, prevValue []byte, obj runtime.Object, uid types.UID, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, finalizers []string, del bool) (err error)
 }
 
 type KeyValue struct {

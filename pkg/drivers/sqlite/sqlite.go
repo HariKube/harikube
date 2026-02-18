@@ -27,6 +27,7 @@ var (
 			(
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name INTEGER,
+				uid INTEGER,
 				created INTEGER,
 				deleted INTEGER,
 				create_revision INTEGER,
@@ -36,6 +37,7 @@ var (
 				old_value BLOB
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_index ON kine (name)`,
+		`CREATE INDEX IF NOT EXISTS kine_uid_index ON kine (uid)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
@@ -61,8 +63,10 @@ var (
 			(
 				kine_id INTEGER,
 				owner INTEGER,
+				block_owner_deletion INTEGER DEFAULT 0,
 				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
 			)`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 )
 
