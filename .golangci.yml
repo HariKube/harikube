@@ -34,6 +34,8 @@ linters:
         - {name: unused-parameter, disabled: true}
         - {name: unused-receiver, disabled: true}
         - {name: var-naming, disabled: true}
+        - {name: use-any, disabled: true}
+        - {name: argument-limit, arguments: 10}
   exclusions:
     generated: lax
     paths:

@@ -35,6 +35,7 @@ var (
  			(
 				id BIGSERIAL PRIMARY KEY,
 				name text COLLATE "C",
+				uid VARCHAR(36),
 				created INTEGER,
 				deleted INTEGER,
 				create_revision BIGINT,
@@ -45,6 +46,7 @@ var (
  			);`,
 
 		`CREATE INDEX IF NOT EXISTS kine_name_index ON kine (name)`,
+		`CREATE INDEX IF NOT EXISTS kine_uid_index ON kine (uid)`,
 		`CREATE INDEX IF NOT EXISTS kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX IF NOT EXISTS kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX IF NOT EXISTS kine_prev_revision_index ON kine (prev_revision)`,
@@ -72,8 +74,10 @@ var (
 			(
 				kine_id BIGINT,
 				owner VARCHAR(36),
+				block_owner_deletion INTEGER DEFAULT 0,
 				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
 			)`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine ALTER COLUMN id SET DATA TYPE BIGINT, ALTER COLUMN create_revision SET DATA TYPE BIGINT, ALTER COLUMN prev_revision SET DATA TYPE BIGINT; ALTER SEQUENCE kine_id_seq AS BIGINT`,

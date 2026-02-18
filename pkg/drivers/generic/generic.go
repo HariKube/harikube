@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -82,6 +83,7 @@ type Generic struct {
 	InsertFieldsSQL   string
 	InsertOwnerSQL    string
 	GetOwnedSQL       string
+	GetUIDSQL         string
 	SelectorLookupSQL string
 
 	LockWrites              bool
@@ -225,17 +227,18 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 			values(?, ?, ?, ?)`, paramCharacter, numbered),
 		InsertFieldsSQL: q(`INSERT INTO kine_fields(kine_id, kine_name, value)
 			values(?, ?, ?)`, paramCharacter, numbered),
-		InsertOwnerSQL: q(`INSERT INTO kine_owners(kine_id, owner)
-			values(?, ?)`, paramCharacter, numbered),
+		InsertOwnerSQL: q(`INSERT INTO kine_owners(kine_id, owner, block_owner_deletion)
+			values(?, ?, ?)`, paramCharacter, numbered),
 		GetOwnedSQL: q(`
-			SELECT s.id, s.name, s.create_revision, s.value FROM (
-				SELECT MAX(k.id) AS id, k.name, k.create_revision, k.value, k.deleted
+			SELECT s.id, s.name, s.uid, s.create_revision, s.value, COALESCE(s.block_owner_deletion, 0) FROM (
+				SELECT MAX(k.id) AS id, k.name, k.uid, k.create_revision, k.value, k.deleted, ko.block_owner_deletion
 				FROM kine_owners AS ko
-				LEFT JOIN kine AS k ON k.id = ko.kine_id
+				INNER JOIN kine AS k ON k.id = ko.kine_id
 				WHERE ko.owner = ?
 				GROUP BY k.name
 				HAVING k.deleted = 0
 			) AS s`, paramCharacter, numbered),
+		GetUIDSQL: q(`SELECT max(id), name, deleted, create_revision, value FROM kine WHERE uid = ?`, paramCharacter, numbered),
 
 		DB: db,
 
@@ -275,14 +278,14 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 			SET prev_revision = ?
 			WHERE name = 'compact_rev_key'`, paramCharacter, numbered),
 
-		InsertLastInsertIDSQL: q(`INSERT INTO kine(name, created, deleted, create_revision, prev_revision, lease, value, old_value)
-			values(?, ?, ?, ?, ?, ?, ?, ?)`, paramCharacter, numbered),
-
-		InsertSQL: q(`INSERT INTO kine(name, created, deleted, create_revision, prev_revision, lease, value, old_value)
-			values(?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`, paramCharacter, numbered),
-
-		FillSQL: q(`INSERT INTO kine(id, name, created, deleted, create_revision, prev_revision, lease, value, old_value)
+		InsertLastInsertIDSQL: q(`INSERT INTO kine(name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
 			values(?, ?, ?, ?, ?, ?, ?, ?, ?)`, paramCharacter, numbered),
+
+		InsertSQL: q(`INSERT INTO kine(name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
+			values(?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`, paramCharacter, numbered),
+
+		FillSQL: q(`INSERT INTO kine(id, name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
+			values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, paramCharacter, numbered),
 	}, err
 }
 
@@ -538,7 +541,7 @@ func (d *Generic) After(ctx context.Context, prefix string, rev, limit int64) (*
 }
 
 func (d *Generic) Fill(ctx context.Context, revision int64) error {
-	_, err := d.execute(ctx, d.FillSQL, revision, fmt.Sprintf("gap-%d", revision), 0, 1, 0, 0, 0, nil, nil)
+	_, err := d.execute(ctx, d.FillSQL, revision, fmt.Sprintf("gap-%d", revision), "", 0, 1, 0, 0, 0, nil, nil)
 	return err
 }
 
@@ -557,11 +560,15 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	var g generic = d
-	obj, labels, fieldsSet, owners, dErr := decodeObject(key, value)
+	obj, uid, labels, fieldsSet, owners, finalizers, dErr := decodeObject(key, value)
 	if dErr != nil {
 		err = dErr
 
 		return
+	}
+
+	if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && !create && len(finalizers) == 1 && finalizers[0] == metav1.FinalizerOrphanDependents {
+		delete = true
 	}
 
 	if len(labels) > 0 || !fieldsSet.AsSelector().Empty() || delete {
@@ -588,7 +595,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 				return
 			}
 
-			if err = t.InsertMetadata(ctx, id, key, obj, labels, fieldsSet, owners, delete, createRevision, previousRevision); err != nil {
+			if err = t.InsertMetadata(ctx, id, key, createRevision, value, prevValue, obj, uid, labels, fieldsSet, owners, finalizers, delete); err != nil {
 				id = 0
 
 				return
@@ -612,7 +619,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	}
 
 	if d.LastInsertID {
-		row, err := g.execute(ctx, d.InsertLastInsertIDSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
+		row, err := g.execute(ctx, d.InsertLastInsertIDSQL, key, uid, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		if err != nil {
 			return 0, err
 		}
@@ -626,7 +633,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 	// duplicate key error to the client.
 	wait := strategy.Backoff(backoff.Linear(100 + time.Millisecond))
 	for i := uint(0); i < 20; i++ {
-		row := g.queryRow(ctx, d.InsertSQL, key, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
+		row := g.queryRow(ctx, d.InsertSQL, key, uid, cVal, dVal, createRevision, previousRevision, ttl, value, prevValue)
 		err = row.Scan(&id)
 
 		if err != nil && d.InsertRetry != nil && d.InsertRetry(err) {
