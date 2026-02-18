@@ -32,6 +32,7 @@ var (
 			(
 				id BIGINT UNSIGNED AUTO_INCREMENT,
 				name VARCHAR(630) CHARACTER SET ascii,
+				uid VARCHAR(36) CHARACTER SET ascii,
 				created INTEGER,
 				deleted INTEGER,
 				create_revision BIGINT UNSIGNED,
@@ -42,6 +43,7 @@ var (
 				PRIMARY KEY (id)
 			) ENGINE=InnoDB;`,
 		`CREATE INDEX kine_name_index ON kine (name)`,
+		`CREATE INDEX kine_uid_index ON kine (uid)`,
 		`CREATE INDEX kine_name_id_index ON kine (name,id)`,
 		`CREATE INDEX kine_id_deleted_index ON kine (id,deleted)`,
 		`CREATE INDEX kine_prev_revision_index ON kine (prev_revision)`,
@@ -67,8 +69,10 @@ var (
 			(
 				kine_id BIGINT UNSIGNED,
 				owner VARCHAR(36),
+				block_owner_deletion INTEGER DEFAULT 0,
 				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
 			) ENGINE=InnoDB;`,
+		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
 	schemaMigrations = []string{
 		`ALTER TABLE kine MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT, MODIFY COLUMN create_revision BIGINT UNSIGNED, MODIFY COLUMN prev_revision BIGINT UNSIGNED`,

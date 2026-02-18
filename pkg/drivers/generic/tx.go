@@ -3,7 +3,9 @@ package generic
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -12,10 +14,10 @@ import (
 	"github.com/k3s-io/kine/pkg/util"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type contextKey int
@@ -143,20 +145,65 @@ func (t *Tx) execute(ctx context.Context, sql string, args ...any) (result sql.R
 }
 
 //nolint:revive
-func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runtime.Object, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, delete bool, createRevision, previousRevision int64) (err error) {
+func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRevision int64, value, prevValue []byte, obj runtime.Object, uid types.UID, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, finalizers []string, delete bool) (err error) {
 	metadataSQLs := []struct {
 		sql  string
 		args []any
 	}{}
 
+	foreground := len(finalizers) == 1 && finalizers[0] == metav1.FinalizerDeleteDependents
+	foregroundGCNeeded := map[string]bool{}
+
 	if !delete {
+		var prevValueObj *unstructured.Unstructured = nil
+		prevValueDecodeOnce := sync.Once{}
+		prevValueDecode := func() error {
+			if len(prevValue) == 0 {
+				return nil
+			}
+
+			prevValueDecodeOnce.Do(func() {
+				prevValueObj = &unstructured.Unstructured{}
+				if _, _, err := unstructuredDecoder.Decode(prevValue, nil, prevValueObj); err != nil {
+					prevValueObj = nil
+				}
+			})
+
+			if prevValueObj == nil {
+				return errors.New("failed to decode previous value")
+			}
+
+			return nil
+		}
+
 		for _, owner := range owners {
+			if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && (owner.BlockOwnerDeletion == nil || !*owner.BlockOwnerDeletion) {
+				if err := prevValueDecode(); err != nil {
+					return err
+				}
+
+				if prevValueObj != nil {
+					preBlocks := map[types.UID]bool{}
+					for i := range prevValueObj.GetOwnerReferences() {
+						if prevValueObj.GetOwnerReferences()[i].BlockOwnerDeletion != nil && *prevValueObj.GetOwnerReferences()[i].BlockOwnerDeletion {
+							preBlocks[prevValueObj.GetOwnerReferences()[i].UID] = true
+						}
+					}
+
+					for i := range owners {
+						if _, ok := preBlocks[owners[i].UID]; ok && (owners[i].BlockOwnerDeletion == nil || !*owners[i].BlockOwnerDeletion) {
+							foregroundGCNeeded[string(owner.UID)] = true
+						}
+					}
+				}
+			}
+
 			metadataSQLs = append(metadataSQLs, struct {
 				sql  string
 				args []any
 			}{
 				sql:  t.d.InsertOwnerSQL,
-				args: []any{id, owner.UID},
+				args: []any{id, owner.UID, owner.BlockOwnerDeletion},
 			})
 		}
 
@@ -189,8 +236,15 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				args: []any{id, key, jsonData},
 			})
 		}
-	} else {
-		uid := util.GetUIDByObject(obj)
+
+		if foreground {
+			delete = true
+		}
+	}
+
+	if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && delete {
+
+		orphan := len(finalizers) == 1 && finalizers[0] == metav1.FinalizerOrphanDependents
 
 		rows, err := t.query(ctx, t.d.GetOwnedSQL, uid)
 		if err != nil {
@@ -200,11 +254,15 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 		}
 		defer rows.Close()
 
+		foregroundDeletionBlocked := false
+		ownedCount := 0
 		for rows.Next() {
-			var ownedKey string
+			ownedCount++
+			var ownedKey, ownedUID string
 			var ownedValue []byte
 			var ownedId, ownedCreateRevision int64
-			if err = rows.Scan(&ownedId, &ownedKey, &ownedCreateRevision, &ownedValue); err != nil {
+			var ownedBlockOwnerDeletion bool
+			if err = rows.Scan(&ownedId, &ownedKey, &ownedUID, &ownedCreateRevision, &ownedValue, &ownedBlockOwnerDeletion); err != nil {
 				return err
 			} else if ownedId == 0 {
 				continue
@@ -215,12 +273,17 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 				return err
 			}
 
-			if len(ownedObj.GetFinalizers()) == 0 {
-				if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), ownedKey, false, true, ownedCreateRevision, ownedId, 0, nil, ownedValue); err != nil {
-					return err
+			if orphan {
+				ownersToDelete := []int{}
+				for i := range ownedObj.GetOwnerReferences() {
+					if ownedObj.GetOwnerReferences()[i].UID == uid {
+						ownersToDelete = append(ownersToDelete, i)
+					}
 				}
-			} else if ownedObj.GetDeletionTimestamp() == nil {
-				ownedObj.SetDeletionTimestamp(&v1.Time{Time: time.Now()})
+
+				for _, i := range ownersToDelete {
+					ownedObj.SetOwnerReferences(append(ownedObj.GetOwnerReferences()[:i], ownedObj.GetOwnerReferences()[i+1:]...))
+				}
 
 				ownedNewValue, err := jsoniter.Marshal(ownedObj)
 				if err != nil {
@@ -233,12 +296,125 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, obj runti
 						args []any
 					}{
 						sql:  t.d.InsertLastInsertIDSQL,
-						args: []any{ownedKey, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
+						args: []any{ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
 					})
 				} else {
-					if err := t.queryRow(ctx, t.d.InsertSQL, ownedKey, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue).Err(); err != nil {
+					if err := t.queryRow(ctx, t.d.InsertSQL, ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue).Err(); err != nil {
 						return err
 					}
+				}
+			} else if len(ownedObj.GetFinalizers()) == 0 {
+				if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), ownedKey, false, true, ownedCreateRevision, ownedId, 0, nil, ownedValue); err != nil {
+					return err
+				}
+			} else if ownedObj.GetDeletionTimestamp() != nil && foreground && ownedBlockOwnerDeletion {
+				foregroundDeletionBlocked = true
+			} else if ownedObj.GetDeletionTimestamp() == nil {
+				if foreground && ownedBlockOwnerDeletion {
+					foregroundDeletionBlocked = true
+				}
+
+				ownedObj.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+
+				ownedNewValue, err := jsoniter.Marshal(ownedObj)
+				if err != nil {
+					return err
+				}
+
+				if t.d.LastInsertID {
+					metadataSQLs = append(metadataSQLs, struct {
+						sql  string
+						args []any
+					}{
+						sql:  t.d.InsertLastInsertIDSQL,
+						args: []any{ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
+					})
+				} else {
+					if err := t.queryRow(ctx, t.d.InsertSQL, ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue).Err(); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		if foreground && !foregroundDeletionBlocked {
+			if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), key, false, true, createRevision, id, 0, nil, value); err != nil {
+				return err
+			}
+		}
+
+		if !foreground || (foreground && !foregroundDeletionBlocked) {
+			for _, owner := range owners {
+				foregroundGCNeeded[string(owner.UID)] = true
+			}
+		}
+	}
+
+	for ownerUID := range foregroundGCNeeded {
+		rows, err := t.query(ctx, t.d.GetUIDSQL, ownerUID)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				return err
+			}
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var ownerId int64
+			var ownerKey string
+			var ownerDeleted bool
+			var ownerCreateRev int64
+			var ownerValue []byte
+			if err = rows.Scan(&ownerId, &ownerKey, &ownerDeleted, &ownerCreateRev, &ownerValue); err != nil {
+				return err
+			} else if ownerDeleted {
+				continue
+			}
+
+			ownerObj := &unstructured.Unstructured{}
+			if _, _, err := unstructuredDecoder.Decode(ownerValue, nil, ownerObj); err != nil {
+				return err
+			}
+
+			if len(ownerObj.GetFinalizers()) != 1 || ownerObj.GetFinalizers()[0] != metav1.FinalizerDeleteDependents {
+				continue
+			}
+
+			ownedRows, err := t.query(ctx, t.d.GetOwnedSQL, ownerUID)
+			if err != nil {
+				if err != sql.ErrNoRows {
+					return err
+				}
+			}
+			defer ownedRows.Close()
+
+			foregroundDeletionUnblocked := true
+			for rows.Next() {
+				var ownedKey, ownedUID string
+				var ownedValue []byte
+				var ownedId, ownedCreateRevision int64
+				var ownedBlockOwnerDeletion bool
+				if err = rows.Scan(&ownedId, &ownedKey, &ownedUID, &ownedCreateRevision, &ownedValue, &ownedBlockOwnerDeletion); err != nil {
+					return err
+				} else if ownedId == 0 {
+					continue
+				}
+
+				ownedObj := &unstructured.Unstructured{}
+				if _, _, err := unstructuredDecoder.Decode(ownedValue, nil, ownedObj); err != nil {
+					return err
+				}
+
+				for _, ownerRef := range ownedObj.GetOwnerReferences() {
+					if string(ownerRef.UID) == ownerUID && ownerRef.BlockOwnerDeletion != nil && *ownerRef.BlockOwnerDeletion {
+						foregroundDeletionUnblocked = false
+					}
+				}
+			}
+
+			if foregroundDeletionUnblocked {
+				if _, err := t.d.Insert(context.WithValue(ctx, txKey, t), ownerKey, false, true, ownerCreateRev, ownerId, 0, nil, ownerValue); err != nil {
+					return err
 				}
 			}
 		}

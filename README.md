@@ -42,14 +42,14 @@ http_reqs......................: 101772 28.188433/s
 
 | Metric | HariKube OSS | Vanilla K8s |
 | - | - | - |
-|Throughput | 28 req/s ✅ | 25 req/s ❌ |
-|Success Rate | 100% ✅| 100% (OOM) ❌ |
-|Latency average | 708ms ✅ | 799ms ❌  |
-|Latency p95 | 2480ms ✅ | 2820ms ❌ |
-|Latency p90 | 1990ms ✅ | 2470ms ❌ |
-|Test Duration | 60m ✅ | ~34m (OOM) ❌ |
-|Stability | Completed ✅  | KILLED ❌ |
-|Objects Handled | 50k ✅ | ~26k (OOM) ❌  |
+| Throughput | 28 req/s ✅ | 25 req/s ❌ |
+| Success Rate | 100% ✅| 100% (OOM) ❌ |
+| Latency average | 708ms ✅ | 799ms ❌ |
+| Latency p95 | 2480ms ✅ | 2820ms ❌ |
+| Latency p90 | 1990ms ✅ | 2470ms ❌ |
+| Test Duration | 60m ✅ | ~34m (OOM) ❌ |
+| Stability | Completed ✅ | KILLED ❌ |
+| Objects Handled | 50k ✅ | ~26k (OOM) ❌ |
 
 ### HariKube on steroids with 6 Postgres
 
@@ -61,16 +61,16 @@ http_req_failed................: 0.00%  0 out of 429180
 http_reqs......................: 429180 119.106435/s
 ```
 
-| Metric | HariKube AE | Vanilla K8s | Gain  |
+| Metric | HariKube AE | Vanilla K8s | Gain |
 | - | - | - | - |
-| Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8×  |
-| Success Rate | 100% ✅ | 100% (then OOM) ❌ | not comparable  |
-| Latency average | 167ms ✅ | 799ms ❌ | 4.8× |
-| Latency p95 | 543ms ✅ | 2820ms ❌ | 5.2× |
-| Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2× |
-| Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable  |
+| Throughput | 119 req/s ✅ | 25 req/s ❌ | 4.8x |
+| Success Rate | 100% ✅ | 100% (then OOM) ❌ | not comparable |
+| Latency average | 167ms ✅ | 799ms ❌ | 4.8x |
+| Latency p95 | 543ms ✅ | 2820ms ❌ | 5.2x |
+| Latency p90 | 398ms ✅ | 2470ms ❌ | 6.2x |
+| Test Duration | 60m ✅ | ~34m (OOM) ❌ | not comparable |
 | Stability | Completed ✅ | KILLED ❌ | not comparable |
-| Objects Handled | 200k+ ✅ | ~26k (crashed) ❌  | 8× |
+| Objects Handled | 200k+ ✅ | ~26k (crashed) ❌ | 8x |
 
 Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
 

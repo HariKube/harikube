@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -46,34 +47,34 @@ var (
 	paramsRegex = regexp.MustCompile(`\?`)
 )
 
-func decodeObject(key string, value []byte) (runtime.Object, map[string]string, fields.Set, []metav1.OwnerReference, error) {
+func decodeObject(key string, value []byte) (runtime.Object, types.UID, map[string]string, fields.Set, []metav1.OwnerReference, []string, error) {
 	obj := util.GetObjectByKey(key)
 	if _, _, err := decoder.Decode(value, nil, obj); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, "", nil, nil, nil, nil, err
 	}
 
-	return obj, util.GetLabelsSetByObject(obj), util.GetFieldsSetByObject(obj, value), util.GetOwnersByObject(obj), nil
+	return obj, util.GetUIDByObject(obj), util.GetLabelsSetByObject(obj), util.GetFieldsSetByObject(obj, value), util.GetOwnersByObject(obj), util.GetFinalizersByObject(obj), nil
 }
 
 func renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector string, args []any, selectorLookupSQL string) (string, []any, error) {
-	var ID string
+	var id string
 	switch {
 	case strings.Contains(sql, "maxkv.theid"):
-		ID = "maxkv.theid"
+		id = "maxkv.theid"
 	case strings.Contains(sql, "c.theid"):
-		ID = "c.theid"
+		id = "c.theid"
 	default:
-		ID = "kv.id"
+		id = "kv.id"
 	}
 
 	numbered := strings.Contains(sql, "$")
 
-	labelsWhere, args, err := renderLabelSelectorWhere(ID, prefix, labelSelector, args, numbered)
+	labelsWhere, args, err := renderLabelSelectorWhere(id, prefix, labelSelector, args, numbered)
 	if err != nil {
 		return "", args, err
 	}
 
-	fieldsWhere, args, err := renderFieldSelectorWhere(ID, prefix, fieldSelector, args, numbered, selectorLookupSQL)
+	fieldsWhere, args, err := renderFieldSelectorWhere(id, prefix, fieldSelector, args, numbered, selectorLookupSQL)
 	if err != nil {
 		return "", args, err
 	}
@@ -81,7 +82,7 @@ func renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector string, args
 	return labelsWhere + fieldsWhere, args, nil
 }
 
-func renderLabelSelectorWhere(ID, prefix, labelSelector string, args []any, numbered bool) (string, []any, error) {
+func renderLabelSelectorWhere(id, prefix, labelSelector string, args []any, numbered bool) (string, []any, error) {
 	if labelSelector == "" {
 		return "", args, nil
 	}
@@ -111,9 +112,7 @@ func renderLabelSelectorWhere(ID, prefix, labelSelector string, args []any, numb
 		case selection.DoesNotExist:
 			wheres = append(wheres, "(kine_id NOT IN (SELECT kine_id FROM kine_labels WHERE kine_name LIKE ? AND name = ? GROUP BY kine_id))")
 			args = append(args, prefix, req.Key())
-		case selection.Equals:
-			fallthrough
-		case selection.DoubleEquals:
+		case selection.DoubleEquals, selection.Equals:
 			wheres = append(wheres, "(name = ? AND value = ?)")
 			args = append(args, req.Key(), valueList[0])
 		case selection.In:
@@ -145,7 +144,7 @@ func renderLabelSelectorWhere(ID, prefix, labelSelector string, args []any, numb
 
 	args = append(args, len(reqs))
 
-	where := fmt.Sprintf(labelsSelect, ID, strings.Join(wheres, " OR "))
+	where := fmt.Sprintf(labelsSelect, id, strings.Join(wheres, " OR "))
 	if numbered {
 		where = replaceParamsToNumbers(where, argsN)
 	}
@@ -153,7 +152,7 @@ func renderLabelSelectorWhere(ID, prefix, labelSelector string, args []any, numb
 	return where, args, nil
 }
 
-func renderFieldSelectorWhere(ID, prefix, fieldSelector string, args []any, numbered bool, selectorLookupSQL string) (string, []any, error) {
+func renderFieldSelectorWhere(id, prefix, fieldSelector string, args []any, numbered bool, selectorLookupSQL string) (string, []any, error) {
 	if fieldSelector == "" {
 		return "", args, nil
 	}
@@ -181,16 +180,14 @@ func renderFieldSelectorWhere(ID, prefix, fieldSelector string, args []any, numb
 		args = append(args, req.Value)
 
 		switch req.Operator {
-		case selection.Equals:
-			fallthrough
-		case selection.DoubleEquals:
+		case selection.DoubleEquals, selection.Equals:
 			wheres = append(wheres, "("+sl+")")
 		case selection.NotEquals:
 			wheres = append(wheres, "(NOT "+sl+")")
 		}
 	}
 
-	where := fmt.Sprintf(fieldsSelect, ID, strings.Join(wheres, " AND "))
+	where := fmt.Sprintf(fieldsSelect, id, strings.Join(wheres, " AND "))
 	if numbered {
 		where = replaceParamsToNumbers(where, argsN)
 	}

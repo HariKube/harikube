@@ -84,6 +84,7 @@ func GetCustomResourceDefinitions() []string {
 	return *kinds
 }
 
+//nolint:revive
 func RegisterCustomResourceDefinition(rawDef []byte) error {
 	def := map[string]any{}
 	err := jsoniter.Unmarshal(rawDef, &def)
@@ -212,7 +213,36 @@ func GetUIDByObject(obj runtime.Object) (uid types.UID) {
 		uid = obj.UID
 	}
 
-	return
+	return uid
+}
+
+func GetFinalizersByObject(obj runtime.Object) (finalizers []string) {
+	switch obj := obj.(type) {
+	case *corev1.Pod:
+		finalizers = obj.Finalizers
+	case *corev1.Event:
+		finalizers = obj.Finalizers
+	case *corev1.Secret:
+		finalizers = obj.Finalizers
+	case *corev1.Namespace:
+		finalizers = obj.Finalizers
+	case *appsv1.ReplicaSet:
+		finalizers = obj.Finalizers
+	case *corev1.ReplicationController:
+		finalizers = obj.Finalizers
+	case *batchv1.Job:
+		finalizers = obj.Finalizers
+	case *corev1.Node:
+		finalizers = obj.Finalizers
+	case *certv1.CertificateSigningRequest:
+		finalizers = obj.Finalizers
+	case *metav1.PartialObjectMetadata:
+		finalizers = obj.Finalizers
+	default:
+		finalizers = nil
+	}
+
+	return finalizers
 }
 
 func GetOwnersByObject(obj runtime.Object) []metav1.OwnerReference {
@@ -240,7 +270,6 @@ func GetOwnersByObject(obj runtime.Object) []metav1.OwnerReference {
 	default:
 		return []metav1.OwnerReference{}
 	}
-
 }
 
 func GetLabelsSetByObject(obj runtime.Object) (ls labels.Set) {
@@ -269,7 +298,7 @@ func GetLabelsSetByObject(obj runtime.Object) (ls labels.Set) {
 		ls = labels.Set{}
 	}
 
-	return
+	return ls
 }
 
 func GetFieldsSetByObject(obj runtime.Object, value []byte) (fs fields.Set) {
@@ -375,5 +404,5 @@ func GetFieldsSetByObject(obj runtime.Object, value []byte) (fs fields.Set) {
 		fs = fields.Set{}
 	}
 
-	return
+	return fs
 }
