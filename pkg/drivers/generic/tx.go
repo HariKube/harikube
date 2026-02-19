@@ -157,9 +157,9 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 	if !delete {
 		var prevValueObj *unstructured.Unstructured = nil
 		prevValueDecodeOnce := sync.Once{}
-		prevValueDecode := func() error {
+		prevValueDecode := func() (*unstructured.Unstructured, error) {
 			if len(prevValue) == 0 {
-				return nil
+				return nil, nil
 			}
 
 			prevValueDecodeOnce.Do(func() {
@@ -170,28 +170,23 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 			})
 
 			if prevValueObj == nil {
-				return errors.New("failed to decode previous value")
+				return nil, errors.New("failed to decode previous value")
 			}
 
-			return nil
+			return prevValueObj, nil
 		}
 
 		for _, owner := range owners {
 			if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && (owner.BlockOwnerDeletion == nil || !*owner.BlockOwnerDeletion) {
-				if err := prevValueDecode(); err != nil {
+				if prevValueObj, err := prevValueDecode(); err != nil {
 					return err
-				}
-
-				if prevValueObj != nil {
-					preBlocks := map[types.UID]bool{}
+				} else if prevValueObj != nil {
 					for i := range prevValueObj.GetOwnerReferences() {
-						if prevValueObj.GetOwnerReferences()[i].BlockOwnerDeletion != nil && *prevValueObj.GetOwnerReferences()[i].BlockOwnerDeletion {
-							preBlocks[prevValueObj.GetOwnerReferences()[i].UID] = true
-						}
-					}
+						por := prevValueObj.GetOwnerReferences()[i]
 
-					for i := range owners {
-						if _, ok := preBlocks[owners[i].UID]; ok && (owners[i].BlockOwnerDeletion == nil || !*owners[i].BlockOwnerDeletion) {
+						if por.UID == owner.UID &&
+							por.BlockOwnerDeletion != nil &&
+							*por.BlockOwnerDeletion {
 							foregroundGCNeeded[string(owner.UID)] = true
 						}
 					}
@@ -350,6 +345,12 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 		}
 	}
 
+	for _, meta := range metadataSQLs {
+		if _, err = t.execute(ctx, meta.sql, meta.args...); err != nil {
+			return err
+		}
+	}
+
 	for ownerUID := range foregroundGCNeeded {
 		rows, err := t.query(ctx, t.d.GetUIDSQL, ownerUID)
 		if err != nil {
@@ -417,12 +418,6 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 					return err
 				}
 			}
-		}
-	}
-
-	for _, meta := range metadataSQLs {
-		if _, err = t.execute(ctx, meta.sql, meta.args...); err != nil {
-			return err
 		}
 	}
 
