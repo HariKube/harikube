@@ -235,6 +235,16 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 		if foreground {
 			delete = true
 		}
+	} else if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && delete {
+		for _, owner := range owners {
+			metadataSQLs = append(metadataSQLs, struct {
+				sql  string
+				args []any
+			}{
+				sql:  t.d.InsertOwnerSQL,
+				args: []any{id, owner.UID, owner.BlockOwnerDeletion},
+			})
+		}
 	}
 
 	if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && delete {
