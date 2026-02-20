@@ -238,7 +238,7 @@ func Open(ctx context.Context, wg *sync.WaitGroup, driverName, dataSourceName st
 				GROUP BY k.name
 				HAVING k.deleted = 0
 			) AS s`, paramCharacter, numbered),
-		GetUIDSQL: q(`SELECT max(id), name, deleted, create_revision, value FROM kine WHERE uid = ?`, paramCharacter, numbered),
+		GetUIDSQL: q(`SELECT id, name, deleted, create_revision, value FROM kine WHERE uid = ? ORDER BY id DESC LIMIT 1`, paramCharacter, numbered),
 
 		DB: db,
 
