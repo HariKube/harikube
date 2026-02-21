@@ -121,6 +121,9 @@ jobs:
 
             # This connects your local terminal to the new virtual cluster
             vcluster connect harikube
+
+            # This creates and admission policy to disable metadata caching of your resources
+            kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/skip-controller-manager-metadata-caching.yaml
             ```
 
             > 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
@@ -145,67 +148,7 @@ jobs:
             CA_CERT=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.ca\.crt}' | base64 -d)
             ```
 
-            - Step C: Before you create your custom resource, you have to ensure Kubernetes Controller Manager avoids caching all the instances. Best if you create a `MutatingAdmissionPolicy`
-
-            ```yaml
-            apiVersion: admissionregistration.k8s.io/v1beta1
-            kind: MutatingAdmissionPolicy
-            metadata:
-              name: "skip-controller-manager-metadata-caching"
-            spec:
-              matchConstraints:
-                resourceRules:
-                - apiGroups:   ["stable.example.com"]
-                  apiVersions: ["v1"]
-                  operations:  ["CREATE"]
-                  resources:   ["shirts"]
-              matchConditions:
-                - name: label-does-not-exist
-                  expression: >
-                      !has(object.metadata.labels) ||
-                      !('skip-controller-manager-metadata-caching' in object.metadata.labels)
-              failurePolicy: Fail
-              reinvocationPolicy: IfNeeded
-              mutations:
-                - patchType: JSONPatch
-                  jsonPatch:
-                    expression: >
-                      has(object.metadata.labels)
-                      ? [
-                          JSONPatch{
-                            op: "add",
-                            path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                            value: ""
-                          }
-                        ]
-                      : [
-                          JSONPatch{
-                            op: "add",
-                            path: "/metadata/labels",
-                            value: {}
-                          },
-                          JSONPatch{
-                            op: "add",
-                            path: "/metadata/labels/skip-controller-manager-metadata-caching",
-                            value: ""
-                          }
-                        ]
-            ---
-            apiVersion: admissionregistration.k8s.io/v1beta1
-            kind: MutatingAdmissionPolicyBinding
-            metadata:
-              name: "skip-controller-manager-metadata-caching"
-            spec:
-              policyName: "skip-controller-manager-metadata-caching"
-              matchResources:
-                resourceRules:
-                - apiGroups:   ["stable.example.com"]
-                  apiVersions: ["v1"]
-                  operations:  ["CREATE"]
-                  resources:   ["shirts"]
-            ```
-
-            - Step D: Enjoy
+            - Step C: Enjoy
 
             ## Important Requirement
 
