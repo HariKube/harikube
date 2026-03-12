@@ -1,0 +1,71 @@
+controlPlane:
+  distro:
+    k8s:
+      enabled: true
+      image:
+        registry: quay.io
+        repository: harikube/kubernetes
+        tag: v1.35.0
+      imagePullPolicy: IfNotPresent
+      apiServer:
+        enabled: true
+        extraArgs:
+        - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true
+        - --watch-cache=false
+        - --etcd-servers=http://harikube-middleware-svc.harikube:2379
+        - --runtime-config=admissionregistration.k8s.io/v1beta1=true
+        - --storage-media-type=application/json
+        - --max-requests-inflight=900
+        - --max-mutating-requests-inflight=300
+      controllerManager:
+        enabled: true
+      scheduler:
+        enabled: true
+  coredns:
+    enabled: true
+  backingStore:
+    etcd:
+      deploy:
+        enabled: false
+    database:
+      embedded:
+        enabled: false
+  statefulSet:
+    highAvailability:
+      replicas: 1
+sync:
+  toHost:
+    pods:
+      enabled: true
+    secrets:
+      enabled: true
+    configMaps:
+      enabled: true
+    services:
+      enabled: true
+    endpoints:
+      enabled: true
+    ingresses:
+      enabled: true
+    networkPolicies:
+      enabled: true
+    persistentVolumes:
+      enabled: true
+    persistentVolumeClaims:
+      enabled: true
+    storageClasses:
+      enabled: true
+    serviceAccounts:
+      enabled: true
+    podDisruptionBudgets:
+      enabled: true
+    priorityClasses:
+      enabled: true
+  fromHost:
+    nodes:
+      enabled: true
+    secrets:
+      enabled: true
+      mappings:
+        byName:
+          "harikube/topology-config": "harikube/topology-config"

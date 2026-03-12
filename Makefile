@@ -45,15 +45,26 @@ test:
 
 harikube-release:
 	mkdir -p package
-	rm -f package/vcluster-harikube-sqlite-$(TAG).yaml
+	rm -f package/vcluster-harikube-sqlite-api-$(TAG).yaml
+	rm -f package/vcluster-harikube-sqlite-workload-$(TAG).yaml
 
 	cat hack/vcluster/vcluster-harikube-sqlite.yaml | \
 		sed 's/#VERSION#/$(TAG)/' \
-		> package/vcluster-harikube-sqlite-$(TAG).yaml
+		> package/vcluster-harikube-sqlite-api-$(TAG).yaml
+	cat hack/vcluster/vcluster-harikube-sqlite.yaml | \
+		sed 's/#VERSION#/$(TAG)/' \
+		> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
+
 	helm repo add loft-sh https://charts.loft.sh
 	helm repo update
+
 	helm template harikube loft-sh/vcluster \
 		--namespace harikube \
 		--values hack/vcluster/api-config.yaml \
 		--set controlPlane.distro.k8s.image.tag=$$(grep tag hack/vcluster/api-config.yaml | awk '{print $$2}') \
-		>> package/vcluster-harikube-sqlite-$(TAG).yaml
+		>> package/vcluster-harikube-sqlite-api-$(TAG).yaml
+	helm template harikube loft-sh/vcluster \
+		--namespace harikube \
+		--values hack/vcluster/workload-config.yaml \
+		--set controlPlane.distro.k8s.image.tag=$$(grep tag hack/vcluster/workload-config.yaml | awk '{print $$2}') \
+		>> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
