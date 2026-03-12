@@ -76,52 +76,7 @@ Open-Source edition is designed to interface with a single backend database inst
 
 ## Installation: The vCluster Method
 
-The easiest way to use this setup is inside a vCluster (a virtual cluster running inside your real cluster). This keeps everything bundled together.
-
-- Step A: Bring your own cluster
-
-- Step B: Deploy the vCluster
-
-Run these commands to create your virtual cluster using a pre-configured SQLite setup:
-
-```bash
-# This creates the virtual cluster resources
-# Edit .spec.template.spec.containers.harikube.args to configure database
-kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/vcluster-harikube-sqlite-release-v0.14.11.yaml
-
-# Wait for readiness
-kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
-
-# This connects your local terminal to the new virtual cluster
-vcluster connect harikube
-
-# This creates and admission policy to disable metadata caching of your resources
-kubectl apply -f https://github.com/HariKube/harikube/releases/download/release-v0.14.11/skip-controller-manager-metadata-caching.yaml
-```
-
-> 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
-
-> 🔓 For service access from host, the vCluster setup keeps things simple: Create your ServiceAccount, create a secret annotated with `kubernetes.io/service-account.name` (example below), and vCluster will sync the secret to the host cluster.
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: remote-your-service-account-name
-  annotations:
-    kubernetes.io/service-account.name: "your-service-account-name"
-type: kubernetes.io/service-account-token
-```
-
-On the host cluster, you can fetch the connection details.
-
-```bash
-KUBE_API_URL=harikube.harikube.svc.cluster.local
-TOKEN=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.token}' | base64 -d)
-CA_CERT=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.ca\.crt}' | base64 -d)
-```
-
-- Step C: Enjoy
+Please read [release notes](https://github.com/HariKube/harikube/releases) for more details how to install HariKube.
 
 ## Important Requirement
 

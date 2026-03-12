@@ -114,7 +114,9 @@ jobs:
             ```bash
             # This creates the virtual cluster resources
             # Edit .spec.template.spec.containers.harikube.args to configure database
-            kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/vcluster-harikube-sqlite-${{ github.ref_name }}.yaml
+            kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/vcluster-harikube-sqlite-api-${{ github.ref_name }}.yaml
+            # OR
+            kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/vcluster-harikube-sqlite-workload-${{ github.ref_name }}.yaml
 
             # Wait for readiness
             kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
@@ -161,5 +163,5 @@ jobs:
 
         draft: true
         prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
-        files: package/vcluster-harikube-sqlite-${{ github.ref_name }}.yaml,hack/vcluster/skip-controller-manager-metadata-caching.yaml
+        files: package/vcluster-harikube-sqlite-api-${{ github.ref_name }}.yaml,package/vcluster-harikube-sqlite-workload-${{ github.ref_name }}.yaml,hack/vcluster/skip-controller-manager-metadata-caching.yaml
   
