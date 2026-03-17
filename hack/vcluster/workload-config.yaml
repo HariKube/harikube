@@ -66,3 +66,8 @@ sync:
       enabled: true
     secrets:
       enabled: false
+networking:
+  replicateServices:
+    fromHost:
+      - from: harikube/harikube-svc
+        to: harikube/harikube-svc
