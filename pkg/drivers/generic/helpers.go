@@ -59,9 +59,9 @@ func decodeObject(key string, value []byte) (runtime.Object, types.UID, map[stri
 func renderSelectorsWhere(sql, prefix, labelSelector, fieldSelector string, args []any, selectorLookupSQL string) (string, []any, error) {
 	var id string
 	switch {
-	case strings.Contains(sql, "maxkv.theid"):
+	case strings.Contains(sql, "maxkv.deleted = 0"):
 		id = "maxkv.theid"
-	case strings.Contains(sql, "c.theid"):
+	case strings.Contains(sql, "c.deleted = 0"):
 		id = "c.theid"
 	default:
 		id = "kv.id"
