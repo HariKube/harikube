@@ -12,7 +12,7 @@ controlPlane:
         extraArgs:
         - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true
         - --watch-cache=false
-        - --etcd-servers=http://harikube-svc.harikube:2379
+        - --etcd-servers=http://harikube-middleware-svc.harikube:2379
         - --runtime-config=admissionregistration.k8s.io/v1beta1=true
         - --storage-media-type=application/json
         - --max-requests-inflight=900
@@ -69,5 +69,5 @@ sync:
 networking:
   replicateServices:
     fromHost:
-      - from: harikube/harikube-svc
-        to: harikube/harikube-svc
+      - from: harikube/harikube-middleware-svc
+        to: harikube/harikube-middleware-svc
