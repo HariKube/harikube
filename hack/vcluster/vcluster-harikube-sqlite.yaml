@@ -117,7 +117,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: harikube-svc
+  name: harikube-middleware-svc
   namespace: harikube
 spec:
   type: ClusterIP 

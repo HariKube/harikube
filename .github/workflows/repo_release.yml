@@ -152,6 +152,10 @@ jobs:
 
             - Step C: Enjoy
 
+            ### Customization
+
+            The manifests gereted for the release are covering basic setup. You can customize your setup, you can find the manifests [here](https://github.com/HariKube/harikube/tree/${{ github.ref_name }}/hack/vcluster).
+
             ## Important Requirement
 
             To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is waiting for.
