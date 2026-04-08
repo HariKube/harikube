@@ -415,7 +415,7 @@ func RowsToEvents(rows *sql.Rows, val, prev bool) (int64, int64, server.Events, 
 	return rev, compact, result, nil
 }
 
-func (s *SQLLog) Watch(ctx context.Context, prefix string, _, _ string) <-chan server.Events {
+func (s *SQLLog) Watch(ctx context.Context, prefix string, labelSelector, fieldSelector string) <-chan server.Events {
 	res := make(chan server.Events, 100)
 	values, err := s.broadcaster.Subscribe(ctx, s.startWatch)
 	if err != nil {
@@ -427,7 +427,7 @@ func (s *SQLLog) Watch(ctx context.Context, prefix string, _, _ string) <-chan s
 	go func() {
 		defer close(res)
 		for i := range values {
-			events, ok := filter(i, checkPrefix, prefix)
+			events, ok := filter(i, checkPrefix, prefix, labelSelector, fieldSelector)
 			if ok {
 				res <- events
 			}
@@ -437,12 +437,14 @@ func (s *SQLLog) Watch(ctx context.Context, prefix string, _, _ string) <-chan s
 	return res
 }
 
-func filter(eventList server.Events, checkPrefix bool, prefix string) (server.Events, bool) {
+func filter(eventList server.Events, checkPrefix bool, prefix string, labelSelector, fieldSelector string) (server.Events, bool) {
 	filteredEventList := make(server.Events, 0, len(eventList))
 
 	for _, event := range eventList {
 		if (checkPrefix && strings.HasPrefix(event.KV.Key, prefix)) || event.KV.Key == prefix {
-			filteredEventList = append(filteredEventList, event)
+			if filterEventBySelectors(event, labelSelector, fieldSelector) {
+				filteredEventList = append(filteredEventList, event)
+			}
 		}
 	}
 

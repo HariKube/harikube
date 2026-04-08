@@ -13,6 +13,7 @@ replace go.etcd.io/etcd/client/v3 => github.com/HariKube/etcd/client/v3 v3.0.0-2
 replace go.etcd.io/etcd/server/v3 => github.com/HariKube/etcd/server/v3 v3.0.0-20250827080453-475a298ac542
 
 require (
+	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/Rican7/retry v0.3.1
 	github.com/alphadose/haxmap v1.4.1
 	github.com/gertd/go-pluralize v0.2.1
