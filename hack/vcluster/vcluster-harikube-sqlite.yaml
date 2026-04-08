@@ -77,15 +77,19 @@ spec:
         - name: tmp
           mountPath: /tmp
         livenessProbe:
-          grpc:
-            port: 2379
+          httpGet:
+            scheme: HTTP
+            port: 8080
+            path: /metrics
           initialDelaySeconds: 15
           timeoutSeconds: 5
           periodSeconds: 20
           failureThreshold: 3
         readinessProbe:
-          grpc:
-            port: 2379
+          httpGet:
+            scheme: HTTP
+            port: 8080
+            path: /metrics
           initialDelaySeconds: 5
           timeoutSeconds: 3
           periodSeconds: 10
