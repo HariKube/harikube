@@ -55,17 +55,12 @@ harikube-release:
 		sed 's/#VERSION#/$(TAG)/' \
 		> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
 
-	helm repo add loft-sh https://charts.loft.sh
-	helm repo update
-
-	helm template harikube loft-sh/vcluster \
-		--version 0.32.1 \
+	helm template harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
 		--namespace harikube \
 		--values hack/vcluster/api-config.yaml \
 		--set controlPlane.distro.k8s.image.tag=$$(grep tag hack/vcluster/api-config.yaml | awk '{print $$2}') \
 		>> package/vcluster-harikube-sqlite-api-$(TAG).yaml
-	helm template harikube loft-sh/vcluster \
-		--version 0.32.1 \
+	helm template harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
 		--namespace harikube \
 		--values hack/vcluster/workload-config.yaml \
 		--set controlPlane.distro.k8s.image.tag=$$(grep tag hack/vcluster/workload-config.yaml | awk '{print $$2}') \

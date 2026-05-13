@@ -105,7 +105,8 @@ jobs:
 
             The easiest way to use this setup is inside a vCluster (a virtual cluster running inside your real cluster). This keeps everything bundled together.
 
-            - Step A: Bring your own cluster
+            - Step A: Bring your own cluster with certmanager
+              - kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.3/cert-manager.yaml
 
             - Step B: Deploy the vCluster
 
@@ -119,10 +120,10 @@ jobs:
             kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/vcluster-harikube-sqlite-workload-${{ github.ref_name }}.yaml
 
             # Wait for readiness
-            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
+            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube-vcluster --timeout=5m
 
             # This connects your local terminal to the new virtual cluster
-            vcluster connect harikube
+            vcluster connect harikube-vcluster
 
             # This creates and admission policy to disable metadata caching of your resources
             kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/skip-controller-manager-metadata-caching.yaml

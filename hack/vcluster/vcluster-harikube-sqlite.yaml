@@ -18,7 +18,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: harikube
+  name: harikube-middleware
   namespace: harikube
   labels:
     app: harikube
@@ -62,6 +62,8 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - --listen-address=0.0.0.0:2379
+        - --server-cert-file=/etc/harikube-middleware-crt/tls.crt
+        - --server-key-file=/etc/harikube-middleware-crt/tls.key
         - --datastore-max-idle-connections=5
         - --datastore-max-open-connections=9
         - --datastore-connection-max-lifetime=5m
@@ -74,11 +76,14 @@ spec:
         volumeMounts:
         - name: db-storage
           mountPath: /db
+        - mountPath: /etc/harikube-middleware-crt
+          name: harikube-middleware-crt
+          readOnly: true
         - name: tmp
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            scheme: HTTP
+            scheme: HTTPS
             port: 8080
             path: /metrics
           initialDelaySeconds: 15
@@ -87,7 +92,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            scheme: HTTP
+            scheme: HTTPS
             port: 8080
             path: /metrics
           initialDelaySeconds: 5
@@ -115,6 +120,10 @@ spec:
       - name: db-storage
         persistentVolumeClaim:
           claimName: harikube-db-pvc
+      - name: harikube-middleware-crt
+        secret:
+          secretName: harikube-middleware-crt
+      - name: harikube-middleware-pvc
       - name: tmp
         emptyDir: {}
 ---
@@ -136,7 +145,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: harikube-metrics
+  name: harikube-metrics-svc
   namespace: harikube
   labels:
     app: harikube
@@ -150,3 +159,34 @@ spec:
       protocol: TCP
       port: 8080
       targetPort: metrics
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app: harikube
+  name: harikube-middleware-issuer
+  namespace: harikube
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app: harikube
+  name: harikube-middleware-crt
+  namespace: harikube
+spec:
+  dnsNames:
+  - localhost
+  - harikube-middleware-svc
+  - harikube-middleware-svc.harikube
+  - harikube-middleware-svc.harikube.svc
+  - harikube-middleware-svc.harikube.cluster.local
+  - harikube-middleware-svc.harikube.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: harikube-middleware-issuer
+  secretName: harikube-middleware-crt
+---
