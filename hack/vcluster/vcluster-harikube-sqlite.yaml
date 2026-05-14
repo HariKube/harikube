@@ -18,7 +18,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: harikube-middleware
+  name: harikube-middleware-deploy
   namespace: harikube
   labels:
     app: harikube
