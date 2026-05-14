@@ -32,5 +32,5 @@ jobs:
 
       - name: E2E Tests
         run: devbox run make -C test/e2e build setup-test test
-      env:
-          KINE_TYPE: workload
+        env:
+            KINE_TYPE: workload
