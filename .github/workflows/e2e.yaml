@@ -26,13 +26,13 @@ jobs:
           enable-cache: 'true'
 
       - name: E2E Tests API
-        run: devbox run make -C test/e2e build setup-test test
+        run: devbox run make -C test/e2e build test
         env:
           TAG: e2e
           KINE_TYPE: api
 
       - name: E2E Tests Workload
-        run: devbox run make -C test/e2e build setup-test test
+        run: devbox run make -C test/e2e build test
         env:
           TAG: e2e
           KINE_TYPE: workload

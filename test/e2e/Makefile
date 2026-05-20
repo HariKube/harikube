@@ -11,8 +11,8 @@ all: build test
 build:
 	REPO=quay.io/harikube IMAGE_NAME=harikube TAG=$(TAG)-snapshot $(MAKE) -C ../.. build package harikube-release
 
-.PHONY: setup
-setup: cleanup
+.PHONY: setup-test
+setup-test: cleanup-test
 	kind create cluster --name $(KIND_CLUSTER)
 	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=120s
 
@@ -23,7 +23,7 @@ setup: cleanup
 	sleep 5
 
 .PHONY: test
-test: setup
+test: setup-test
 	kubectl apply -f ../../package/vcluster-harikube-sqlite-$(KINE_TYPE)-$(TAG)-snapshot.yaml
 
 	kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 deployment/harikube-middleware-deploy --timeout=2m
@@ -32,11 +32,11 @@ test: setup
 	vcluster connect harikube-vcluster
 	$(MAKE) _test
 	vcluster disconnect
-	$(MAKE) cleanup
+	$(MAKE) cleanup-test
 
 _test:
 	chainsaw test --test-dir 00-shirt
 
-.PHONY: cleanup
-cleanup:
+.PHONY: cleanup-test
+cleanup-test:
 	@kind delete cluster --name $(KIND_CLUSTER)

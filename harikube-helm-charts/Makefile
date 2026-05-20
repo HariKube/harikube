@@ -27,8 +27,8 @@ render:
 build:
 	REPO=quay.io/harikube IMAGE_NAME=harikube TAG=$(TAG)-snapshot $(MAKE) -C .. build package harikube-release
 
-.PHONY: setup
-setup: cleanup
+.PHONY: setup-test
+setup-test: cleanup-test
 	kind create cluster --name $(KIND_CLUSTER)
 	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=120s
 
@@ -40,10 +40,7 @@ setup: cleanup
 	sleep 5
 
 .PHONY: test
-test: setup _setup _test
-	$(MAKE) cleanup
-
-_setup:
+test: setup-test
 	kubectl create namespace $(NAMESPACE)
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-middleware=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-apiserver=enabled --overwrite
@@ -75,11 +72,14 @@ _setup:
 		--set apiServer.create=true \
 		--set controllerManager.create=true
 
-_test:
 	vcluster connect harikube-vcluster
-	chainsaw test --test-dir ../test/e2e/00-shirt
+	$(MAKE) _test
 	vcluster disconnect
+	$(MAKE) cleanup-test
 
-.PHONY: cleanup
-cleanup:
+_test:
+	chainsaw test --test-dir ../test/e2e/00-shirt
+
+.PHONY: cleanup-test
+cleanup-test:
 	@kind delete cluster --name $(KIND_CLUSTER)
