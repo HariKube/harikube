@@ -21,6 +21,7 @@ __debug*bin*
 /output*/
 /_output*/
 /_output
+/package/
 
 # Emacs save files
 *~

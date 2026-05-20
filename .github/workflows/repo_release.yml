@@ -15,10 +15,35 @@ jobs:
     timeout-minutes: 2
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install devbox
+      uses: jetify-com/devbox-install-action@v0.12.0
+      with:
+        enable-cache: 'true'
+
+    - name: Extract branch name
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
+
+    - name: Extract version
+      run: echo "version=$(cat harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+      id: extract_version
+
     - name: Render manifests
       run: make harikube-release
       env:
         TAG: ${{ github.ref_name }}
+
+    - name: Helm login
+      run: |
+        echo "${{ secrets.REGISTRY_TOKEN }}" | devbox run helm registry login ${{ vars.REGISTRY }} \
+          --username "${{ vars.REGISTRY_USER }}" \
+          --password-stdin
+
+    - name: Helm push chart
+      run: |
+        devbox run helm push package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}
+
     - name: Create release
       if: ${{ !startsWith(github.ref, 'refs/heads/dev-') }}
       uses: mhmxs/milestone-release-action@main
@@ -101,7 +126,7 @@ jobs:
 
             Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
 
-            ## Installation: The vCluster Method
+            ## Installation: Simple manifests
 
             The easiest way to use this setup is inside a vCluster (a virtual cluster running inside your real cluster). This keeps everything bundled together.
 
@@ -129,6 +154,85 @@ jobs:
             kubectl apply -f https://github.com/HariKube/harikube/releases/download/${{ github.ref_name }}/skip-controller-manager-metadata-caching.yaml
             ```
 
+            ## Installation: Helm charts
+            
+            ```bash
+            helm install harikube oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube-helm-charts \
+              --version ${{ steps.extract_version.outputs.version }} \
+              --debug \
+              --create-namespace \
+              --namespace harikube
+            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 deployment/harikube-middleware-deploy --timeout=2m
+            ```
+
+            You can enable network policies. You have to create namespace manually, label the namespace and skip `--create-namespace` flag.
+
+            ```bash
+            --set middleware.networkPolicy.create=true # kubectl label namespace harikube harikube.info/harikube-middleware=enabled --overwrite
+            --set vcluster.networkPolicy.create=true # kubectl label namespace harikube harikube.info/harikube-vcluster=enabled --overwrite
+            ```
+
+            You can enable ServiceMonitors per service.
+
+            ```bash
+            --set middleware.monitoring.create=true
+            --set operator.monitoring.create=true
+            ```
+
+            You can enable the MutatingAdmissionPolicy to label non core resources with skip-controller-manager-metadata-caching.
+
+            ```bash
+            --set mutatingAdmissionPolicy.create=true
+            ```
+
+            ### Install vCluster API only
+            
+            ```bash
+            helm install harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
+              --debug \
+              --namespace harikube \
+              --values harikube/vcluster/api-config.yaml
+            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube-vcluster --timeout=5m
+            ```
+
+            ### Install vCluster workload support
+            
+            ```bash
+            helm install harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
+              --debug \
+              --namespace harikube \
+              --values harikube/vcluster/workload-config.yaml
+            kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube-vcluster --timeout=5m
+            ```
+
+            ### Install scalable control pvclaimbinde
+
+            ```bash
+            helm install harikube-control-plane ./harikube \
+              --debug \
+              --namespace $(NAMESPACE) \
+              --set middleware.create=false \
+              --set operator.create=false \
+              --set apiServer.create=true \
+              --set controllerManager.create=true
+            ```
+
+            You can enable network policies.
+
+            ```bash
+            --set apiServer.networkPolicy.create=true # kubectl label namespace harikube harikube.info/harikube-apiserver=enabled --overwrite
+            --set controllerManager.networkPolicy.create=true # kubectl label namespace harikube harikube.info/harikube-controllermanager=enabled --overwrite
+            ```
+
+            You can enable ServiceMonitors per service.
+
+            ```bash
+            --set apiServer.monitoring.create=true
+            --set controllerManager.monitoring.create=true
+            ```
+
+            ## vCluster connection
+
             > 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
 
             > 🔓 For service access from host, the vCluster setup keeps things simple: Create your ServiceAccount, create a secret annotated with `kubernetes.io/service-account.name` (example below), and vCluster will sync the secret to the host cluster.
@@ -153,9 +257,9 @@ jobs:
 
             - Step C: Enjoy
 
-            ### Customization
+            ## Customization
 
-            The manifests gereted for the release are covering basic setup. You can customize your setup, you can find the manifests [here](https://github.com/HariKube/harikube/tree/${{ github.ref_name }}/hack/vcluster).
+            The manifests gereted for the release are covering basic setup. You can customize your setup, you can find the manifests [here](https://github.com/HariKube/harikube/tree/${{ github.ref_name }}/harikube-helm-charts/harikube/vcluster).
 
             ## Important Requirement
 
@@ -168,5 +272,5 @@ jobs:
 
         draft: true
         prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
-        files: package/vcluster-harikube-sqlite-api-${{ github.ref_name }}.yaml,package/vcluster-harikube-sqlite-workload-${{ github.ref_name }}.yaml,hack/vcluster/skip-controller-manager-metadata-caching.yaml
+        files: package/vcluster-harikube-sqlite-api-${{ github.ref_name }}.yaml,package/vcluster-harikube-sqlite-workload-${{ github.ref_name }}.yaml,package/skip-controller-manager-metadata-caching.yaml,package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz
   

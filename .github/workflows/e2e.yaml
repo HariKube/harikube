@@ -28,11 +28,11 @@ jobs:
       - name: E2E Tests API
         run: devbox run make -C test/e2e build setup-test test
         env:
-          KINE_VERSION: e2e
+          TAG: e2e
           KINE_TYPE: api
 
       - name: E2E Tests Workload
         run: devbox run make -C test/e2e build setup-test test
         env:
-          KINE_VERSION: e2e
+          TAG: e2e
           KINE_TYPE: workload

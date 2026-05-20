@@ -64,6 +64,8 @@ controlPlane:
         - name: etcd-certs
           mountPath: /etc/kubernetes/pki/etcd
           readOnly: true
+  serviceMonitor:
+    enabled: false
 exportKubeConfig:
   context: harikube-vcluster-context
   server: https://harikube-vcluster.harikube:443
@@ -87,3 +89,8 @@ sync:
   fromHost:
     events:
       enabled: false
+    secrets:
+      enabled: true
+      mappings:
+        byName:
+          "harikube/topology-config": "harikube/topology-config"

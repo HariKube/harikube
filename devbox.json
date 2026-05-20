@@ -1,9 +1,12 @@
 {
     "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.1/.schema/devbox.schema.json",
     "packages": [
+      "yamllint@1.37.1",
       "kyverno-chainsaw@0.2.13",
+      "kubeconform@0.7.0",
       "kind@0.30.0",
       "kubectl@1.34.3",
+      "kubernetes-helm@3.19.1",
       "vcluster@0.29.1"
     ],
     "shell": {
