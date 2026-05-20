@@ -27,3 +27,5 @@ jobs:
 
       - name: Run tester
         run: devbox run make -C harikube-helm-charts build test
+        env:
+          TAG: e2e
