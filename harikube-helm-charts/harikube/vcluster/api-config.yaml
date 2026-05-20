@@ -10,7 +10,7 @@ controlPlane:
       apiServer:
         enabled: true
         extraArgs:
-        - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true
+        - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true,CustomResourceFieldSelectors=true
         - --watch-cache=false
         - --etcd-servers=https://harikube-middleware-svc:2379
         - --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
@@ -23,8 +23,8 @@ controlPlane:
       controllerManager:
         enabled: true
         extraArgs:
-        - --controllers=*,-nodeipam,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
-        - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true
+        - --controllers=-nodeipam,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
+        - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true,CustomResourceFieldSelectors=true
         - --kube-api-burst=90
         - --kube-api-qps=60
       scheduler:
