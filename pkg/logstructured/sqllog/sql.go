@@ -442,7 +442,9 @@ func filter(eventList server.Events, checkPrefix bool, prefix string, labelSelec
 
 	for _, event := range eventList {
 		if (checkPrefix && strings.HasPrefix(event.KV.Key, prefix)) || event.KV.Key == prefix {
-			if filterEventBySelectors(event, labelSelector, fieldSelector) {
+			if filterEventBySelectors(event.KV, labelSelector, fieldSelector) {
+				filteredEventList = append(filteredEventList, event)
+			} else if event.PrevKV != nil && filterEventBySelectors(event.PrevKV, labelSelector, fieldSelector) {
 				filteredEventList = append(filteredEventList, event)
 			}
 		}

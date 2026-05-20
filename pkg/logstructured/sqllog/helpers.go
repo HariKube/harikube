@@ -21,15 +21,15 @@ var (
 	decoder = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
 )
 
-func filterEventBySelectors(event *server.Event, labelSelector, fieldSelector string) bool {
-	if event.KV == nil || len(event.KV.Value) == 0 {
+func filterEventBySelectors(kv *server.KeyValue, labelSelector, fieldSelector string) bool {
+	if kv == nil || len(kv.Value) == 0 {
 		return true
 	} else if labelSelector == "" && fieldSelector == "" {
 		return true
 	}
 
-	obj := util.GetObjectByKey(event.KV.Key)
-	if _, _, err := decoder.Decode(event.KV.Value, nil, obj); err != nil {
+	obj := util.GetObjectByKey(kv.Key)
+	if _, _, err := decoder.Decode(kv.Value, nil, obj); err != nil {
 		return true
 	}
 
@@ -48,6 +48,9 @@ func filterEventBySelectors(event *server.Event, labelSelector, fieldSelector st
 			labelsMatch = ls.Matches(util.GetLabelsSetByObject(obj))
 		}
 	}
+	if !labelsMatch {
+		return false
+	}
 
 	fieldsMatch := true
 	if fieldSelector != "" {
@@ -61,7 +64,7 @@ func filterEventBySelectors(event *server.Event, labelSelector, fieldSelector st
 		}(), cache.WithExpiration(time.Hour))
 
 		if fs != nil && !fs.Empty() {
-			fields := util.GetFieldsSetByObject(obj, event.KV.Value)
+			fields := util.GetFieldsSetByObject(obj, kv.Value)
 
 			matches := 0
 			for _, req := range fs.Requirements() {
@@ -84,5 +87,5 @@ func filterEventBySelectors(event *server.Event, labelSelector, fieldSelector st
 		}
 	}
 
-	return labelsMatch && fieldsMatch
+	return fieldsMatch
 }
