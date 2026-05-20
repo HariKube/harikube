@@ -1,4 +1,4 @@
-name: Lint
+name: Helm Lint
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: E2E
+name: Helm E2E
 
 on:
   push:
@@ -26,4 +26,4 @@ jobs:
           enable-cache: 'true'
 
       - name: Run tester
-        run: devbox run make -C harikube-helm-charts test-e2e
+        run: devbox run make -C harikube-helm-charts build test

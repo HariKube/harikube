@@ -6,7 +6,7 @@ KINE_TYPE?=workload
 TAG?=$(shell git describe --tags --abbrev=0)
 KIND_CLUSTER ?= harikube-helm-chart-test
 
-all: lint build test-e2e
+all: lint build test
 
 .PHONY: lint
 lint:
@@ -39,20 +39,8 @@ setup-test: cleanup-test
 	kubectl wait -n cert-manager --for=jsonpath='{.status.readyReplicas}'=1 deployment/cert-manager-webhook --timeout=2m
 	sleep 5
 
-.PHONY: test-integration
-test-integration: setup-test _test-integration
-	$(MAKE) cleanup-test
-
-_test-integration:
-	helm install harikube ./harikube \
-		--dry-run \
-		--debug \
-		--create-namespace \
-		--namespace $(NAMESPACE) \
-		--set middleware.image.tag=$(TAG)-snapshot
-
-.PHONY: test-e2e
-test-e2e: setup-test _setup-e2e _test-e2e
+.PHONY: test
+test: setup-test _setup-e2e _test
 	$(MAKE) cleanup-test
 
 _setup-e2e:
@@ -87,7 +75,7 @@ _setup-e2e:
 		--set apiServer.create=true \
 		--set controllerManager.create=true
 
-_test-e2e:
+_test:
 	vcluster connect harikube-vcluster
 	chainsaw test --test-dir ../test/e2e/00-shirt
 	vcluster disconnect
