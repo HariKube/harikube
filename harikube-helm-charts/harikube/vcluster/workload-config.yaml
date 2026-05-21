@@ -23,7 +23,7 @@ controlPlane:
       controllerManager:
         enabled: true
         extraArgs:
-        - --controllers=-nodeipam,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
+        - --controllers=*,-nodeipam,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
         - --feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true,CustomResourceFieldSelectors=true
         - --kube-api-burst=90
         - --kube-api-qps=60
@@ -33,6 +33,8 @@ controlPlane:
     enabled: true
   backingStore:
     etcd:
+      embedded:
+        enabled: false
       deploy:
         enabled: false
     database:

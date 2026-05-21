@@ -51,9 +51,11 @@ harikube-release:
 
 	@helm template harikube harikube-helm-charts/harikube \
 		--namespace harikube \
+		--set middleware.image.tag=$(TAG) \
 		>> package/vcluster-harikube-sqlite-api-$(TAG).yaml
 	@helm template harikube harikube-helm-charts/harikube \
 		--namespace harikube \
+		--set middleware.image.tag=$(TAG) \
 		>> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
 
 	@helm template harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \

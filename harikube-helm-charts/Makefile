@@ -78,7 +78,7 @@ test: setup-test
 	$(MAKE) cleanup-test
 
 _test:
-	chainsaw test --test-dir ../test/e2e/00-shirt
+	chainsaw test --test-dir ../test/e2e
 
 .PHONY: cleanup-test
 cleanup-test:
