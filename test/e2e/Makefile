@@ -3,7 +3,7 @@ MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 KINE_TYPE?=workload
 TAG?=$(shell git describe --tags --abbrev=0)
-KIND_CLUSTER?=harikube-helm-chart-test
+KIND_CLUSTER?=harikube-e2e-test
 
 all: build test
 
@@ -35,7 +35,10 @@ test: setup-test
 	$(MAKE) cleanup-test
 
 _test:
-	chainsaw test --test-dir 00-shirt
+	chainsaw test --test-dir .
+
+_sonobuoy:
+	sonobuoy run --dns-pod-labels='k8s-app=vcluster-kube-dns' --e2e-focus='sig-api-machinery' --e2e-skip='StorageVersionAPI|Slow|Flaky|Alpha|OffByDefault'
 
 .PHONY: cleanup-test
 cleanup-test:

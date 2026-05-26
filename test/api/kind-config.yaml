@@ -1,0 +1,21 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+featureGates:
+  "CustomResourceFieldSelectors": true
+  "WatchList": true
+  "WatchListClient": true
+  "MutatingAdmissionPolicy": true
+  "VolumeAttributesClass": true
+nodes:
+- role: control-plane
+  # kind build node-image v1.36.0 --image=mhmxs/node:v1.36.0
+  image: mhmxs/node:v1.36.0
+  kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+        extraArgs:
+          etcd-servers: "http://172.17.0.1:2369"
+          watch-cache: "false"
+          runtime-config: "admissionregistration.k8s.io/v1alpha1=true,admissionregistration.k8s.io/v1beta1=true,admissionregistration.k8s.io/v1=true"
+          storage-media-type: "application/json"
