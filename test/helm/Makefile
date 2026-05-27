@@ -26,7 +26,7 @@ _deploy:
 	helm install harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
 		--debug \
 		--namespace $(NAMESPACE) \
-		--values ../../harikube-helm-charts/harikube/vcluster/$(KINE_TYPE)-config.yaml
+		--values ../../harikube-helm-charts/harikube/vcluster/workload-config.yaml
 	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube-vcluster --timeout=5m
 
 	helm install harikube-control-plane ../../harikube-helm-charts/harikube \

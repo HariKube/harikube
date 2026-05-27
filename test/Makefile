@@ -7,8 +7,7 @@ REPO?=quay.io/harikube
 IMAGE_NAME?=harikube
 KIND_CLUSTER?=harikube-api-test
 KUBECONFIG?=$(HOME)/.kube/config
-KINE_TYPE?=workload
-KIND_CLUSTER ?= harikube-$(KINE_TYPE)-test
+KIND_CLUSTER ?= harikube-test
 
 NAMESPACE=harikube
 
