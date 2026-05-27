@@ -5,7 +5,7 @@ REPO?=quay.io/harikube
 IMAGE_NAME?=harikube
 TAG?=$(shell git describe --tags --abbrev=0)
 KIND_CLUSTER?=harikube-api-test
-KUBECONFIG?=$(HOME)/.kubernetes/config
+KUBECONFIG?=$(HOME)/.kube/config
 
 all: build test
 
