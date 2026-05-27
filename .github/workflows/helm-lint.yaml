@@ -18,7 +18,7 @@ concurrency:
   
 jobs:
   lint:
-    name: Run on Ubuntu
+    name: Helm Lint
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code

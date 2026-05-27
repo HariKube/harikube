@@ -14,7 +14,7 @@ on:
   
 jobs:
   harikube-test:
-    name: Run on Ubuntu
+    name: HariKube Test
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -31,7 +31,7 @@ jobs:
         env:
           TAG: api
   kine-test:
-    name: Run on Ubuntu
+    name: Kine Test
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
