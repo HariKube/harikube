@@ -11,9 +11,11 @@ setup-test: cleanup-test
 		--listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal=WAL&cache=shared'
 
 	kind create cluster --name $(KIND_CLUSTER) --config kind-config.yaml
-	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=120s
 
 _deploy:
+	docker exec $(KIND_CLUSTER)-control-plane sed -i "s|registry.k8s.io/kube-apiserver|quay.io/harikube/kube-apiserver|" /etc/kubernetes/manifests/kube-apiserver.yaml
+	sleep 60
+	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=240s
 
 _test:
 	docker run --rm --net=host -i \

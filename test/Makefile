@@ -5,7 +5,7 @@ TAG?=$(shell git describe --tags --abbrev=0)-snapshot
 
 REPO?=quay.io/harikube
 IMAGE_NAME?=harikube
-KIND_CLUSTER?=harikube-api-test
+KIND_CLUSTER?=harikube-test
 KUBECONFIG?=$(HOME)/.kube/config
 KIND_CLUSTER ?= harikube-test
 

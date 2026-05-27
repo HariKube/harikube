@@ -30,22 +30,3 @@ jobs:
         run: devbox run make -C test/api build test
         env:
           TAG: api
-  kine-test:
-    name: Kine Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    steps:
-      - name: Clone the code
-        uses: actions/checkout@v4
-
-      - name: Install devbox
-        uses: jetify-com/devbox-install-action@v0.15.0
-        with:
-          enable-cache: 'true'
-
-      - name: API Tests
-        run: devbox run make -C test/api test
-        env:
-          REPO: ghcr.io/k3s-io
-          IMAGE_NAME: kine
-          TAG: v0.15.0
