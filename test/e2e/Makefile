@@ -2,7 +2,9 @@ include ../Makefile
 
 all: build test
 
-_deploy
+_deploy:
+	kind load docker-image -n $(KIND_CLUSTER) $(REPO)/$(IMAGE_NAME):$(TAG)
+
 	kubectl apply -f ../../package/vcluster-harikube-sqlite-$(KINE_TYPE)-$(TAG).yaml
 
 	kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 deployment/harikube-middleware-deploy --timeout=2m

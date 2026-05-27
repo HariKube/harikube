@@ -16,14 +16,18 @@ all: build test-all
 
 .PHONY: build
 build:
-	REPO=$(REPO) IMAGE_NAME=$(IMAGE_NAME) TAG=$(TAG) $(MAKE) -C .. build package harikube-release
+	REPO=$(REPO) IMAGE_NAME=$(IMAGE_NAME) TAG=$(TAG) $(MAKE) -C $(MAKEFILE_DIR)/.. build package harikube-release
+
+.PHONY: test-all
+test-all:
+	$(MAKE) -C api test
+	$(MAKE) -C e2e test
+	$(MAKE) -C helm test
 
 .PHONY: setup-test
 setup-test: cleanup-test
 	kind create cluster --name $(KIND_CLUSTER)
 	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=120s
-
-	kind load docker-image -n $(KIND_CLUSTER) quay.io/harikube/harikube:$(TAG)
 
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.3/cert-manager.yaml
 	kubectl apply -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.77.1/stripped-down-crds.yaml
@@ -37,9 +41,3 @@ cleanup-test: _cleanup-test
 .PHONY: test
 test: setup-test _deploy _test
 	$(MAKE) cleanup-test
-
-.PHONY: test-all
-test-all:
-	$(MAKE) -C api test
-	$(MAKE) -C e2e test
-	$(MAKE) -C helm test

@@ -3,6 +3,8 @@ include ../Makefile
 all: build test
 
 _deploy:
+	kind load docker-image -n $(KIND_CLUSTER) $(REPO)/$(IMAGE_NAME):$(TAG)
+
 	kubectl create namespace $(NAMESPACE)
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-middleware=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-apiserver=enabled --overwrite
