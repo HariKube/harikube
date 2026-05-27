@@ -29,7 +29,7 @@ test: setup-test _test
 	$(MAKE) cleanup-test
 
 _test:
-	docker run --rm --net=host -it \
+	docker run --rm --net=host -i \
 		-v $(KUBECONFIG):$(KUBECONFIG) \
 		-e KUBECONFIG=$(KUBECONFIG) \
 		--entrypoint sh \
