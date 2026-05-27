@@ -3,12 +3,13 @@ kind: Test
 metadata:
   name: infra
 spec:
+  timeouts:
+    assert: 2m
   namespace: kube-system
   steps:
   - name: Validate CoreDNS
     try:
     - assert:
-        timeout: 2m
         resource:
           apiVersion: apps/v1
           kind: Deployment

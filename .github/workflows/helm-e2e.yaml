@@ -26,6 +26,6 @@ jobs:
           enable-cache: 'true'
 
       - name: Run tester
-        run: devbox run make -C harikube-helm-charts build test
+        run: devbox run make -C test/helm build test
         env:
           TAG: e2e
