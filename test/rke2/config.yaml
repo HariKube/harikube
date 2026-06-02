@@ -1,0 +1,19 @@
+kube-apiserver-image: "quay.io/harikube/kube-apiserver:v1.36.0-amd64"
+kube-apiserver-arg:
+- "feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true,CustomResourceFieldSelectors=true"
+- "runtime-config=admissionregistration.k8s.io/v1beta1=true,admissionregistration.k8s.io/v1=true"
+- "storage-media-type=application/json"
+- "encryption-provider-config="
+- "encryption-provider-config-automatic-reload=false"
+- "max-requests-inflight=900"
+- "max-mutating-requests-inflight=300"
+- "watch-cache=false"
+- "etcd-servers=http://172.17.0.1:2369"
+
+kube-controller-manager-image: "quay.io/harikube/kube-controller-manager:v1.36.0"
+kube-controller-manager-arg:
+- "feature-gates=WatchList=true,WatchListClient=true,VolumeAttributesClass=true,MutatingAdmissionPolicy=true,CustomResourceFieldSelectors=true"
+- "kube-api-burst=90"
+- "kube-api-qps=60"
+- "node-cidr-mask-size-ipv4=23"
+- "terminated-pod-gc-threshold=1000"

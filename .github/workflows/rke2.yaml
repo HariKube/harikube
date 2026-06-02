@@ -1,4 +1,4 @@
-name: API Tests
+name: RKE2 Tests
 
 on:
   push:
@@ -13,10 +13,10 @@ on:
       - ".github/workflows/actionlint.yaml"
   
 jobs:
-  api-test:
-    name: API Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
+  rke2-test:
+    name: RKE2 Test
+    runs-on: self-hosted
+    timeout-minutes: 240
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -26,7 +26,18 @@ jobs:
         with:
           enable-cache: 'true'
 
-      - name: API Tests
-        run: devbox run make -C test/api build test
+      - name: RKE2 Setup Tests
+        run: devbox run make -C test/rke2 build setup-test _load _deploy
         env:
           TAG: api
+
+      - name: RKE2 Test Host
+        run: devbox run make -C test/rke2 _test-host
+
+      - name: RKE2 Test vCluster
+        run: devbox run make -C test/rke2 _test-vcluster
+
+      - name: RKE2 Cleanup Tests
+        if: always()
+        run: devbox run make -C test/rke2 cleanup-test
+

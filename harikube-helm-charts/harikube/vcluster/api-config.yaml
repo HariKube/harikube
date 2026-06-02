@@ -16,7 +16,7 @@ controlPlane:
         - --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
         - --etcd-certfile=/etc/kubernetes/pki/etcd/tls.crt
         - --etcd-keyfile=/etc/kubernetes/pki/etcd/tls.key
-        - --runtime-config=admissionregistration.k8s.io/v1beta1=true
+        - --runtime-config=admissionregistration.k8s.io/v1=true
         - --storage-media-type=application/json
         - --max-requests-inflight=900
         - --max-mutating-requests-inflight=300
@@ -92,7 +92,4 @@ sync:
     events:
       enabled: false
     secrets:
-      enabled: true
-      mappings:
-        byName:
-          "harikube/topology-config": "harikube/topology-config"
+      enabled: false

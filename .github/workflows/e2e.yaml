@@ -25,7 +25,7 @@ jobs:
         with:
           enable-cache: 'true'
 
-      - name: E2E Tests Workload
+      - name: E2E Tests
         run: devbox run make -C test/e2e build test
         env:
           TAG: e2e

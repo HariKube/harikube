@@ -2,9 +2,10 @@ include ../Makefile
 
 all: build test
 
-_deploy:
+_load:
 	kind load docker-image -n $(KIND_CLUSTER) $(REPO)/$(IMAGE_NAME):$(TAG)
 
+_deploy:
 	kubectl create namespace $(NAMESPACE)
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-middleware=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-apiserver=enabled --overwrite
@@ -14,6 +15,7 @@ _deploy:
 	helm install harikube ../../harikube-helm-charts/harikube \
 		--debug \
 		--namespace $(NAMESPACE) \
+		--set middleware.image.tag=$(TAG) \
 		--set middleware.networkPolicy.create=true \
 		--set apiServer.networkPolicy.create=true \
 		--set controllerManager.networkPolicy.create=true \
@@ -36,10 +38,9 @@ _deploy:
 		--set apiServer.create=true \
 		--set controllerManager.create=true
 
-	vcluster connect harikube-vcluster
-
 _test:
+	vcluster connect harikube-vcluster
 	chainsaw test --test-dir ../e2e
+	vcluster disconnect ||:
 
 _cleanup-test:
-	@vcluster disconnect ||:

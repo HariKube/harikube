@@ -1,0 +1,32 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "opensuse/Leap-15.6.x86_64"
+  config.vm.hostname = "harikube-rke2"
+
+  config.ssh.insert_key = false
+
+  config.vm.provision "shell", inline: <<-SHELL
+    set -euxo pipefail
+
+    zypper install -y iptables docker
+
+    systemctl enable docker.service --now
+
+    mkdir -p /etc/rancher/rke2
+    cp /vagrant/config.yaml /etc/rancher/rke2
+
+    ln -sf /vagrant/harikube.service /etc/systemd/system
+    systemctl daemon-reload
+
+    echo "export KUBECONFIG=/etc/rancher/rke2/rke2.yaml" >> ~/.bashrc
+  SHELL
+
+  config.vm.provider :libvirt do |lv|
+    lv.uri = "qemu:///system"
+    lv.cpus = 6
+    lv.memory = 6144
+    lv.machine_virtual_size = 20
+    lv.cpu_mode = "host-passthrough"
+    lv.nic_model_type = "virtio"
+    lv.driver = "kvm"
+  end
+end
