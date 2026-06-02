@@ -24,7 +24,7 @@ jobs:
       - name: Install devbox
         uses: jetify-com/devbox-install-action@v0.15.0
         with:
-          enable-cache: 'false'
+          enable-cache: 'true'
 
       - name: RKE2 Setup Tests
         run: devbox run make -C test/rke2 build setup-test _load _deploy

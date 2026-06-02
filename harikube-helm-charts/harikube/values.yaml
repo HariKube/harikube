@@ -145,7 +145,7 @@ middleware:
     resources:
       requests:
         storage: 5Gi
-    storageClass: standard
+    storageClassName: standard
   monitoring:
     create: false
   networkPolicy:

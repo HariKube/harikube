@@ -50,7 +50,7 @@ controlPlane:
         - ReadWriteOnce
         retentionPolicy: Retain
         size: 5G
-        # storageClass: standard
+        storageClass: standard
       addVolumes:
       - name: etcd-certs
         secret:
