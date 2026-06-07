@@ -1,0 +1,53 @@
+type Openshift {
+  let preflight: Preflight!
+  let chartVerifier: ChartVerifier!
+
+  new(pyxisApiToken: Secret = null) {
+    self.preflight = Dagger.preflight(pyxisApiToken: pyxisApiToken)
+    self.chartVerifier = Dagger.chartVerifier
+
+    self
+  }
+
+  pub images: [String!]! = [
+    "quay.io/harikube/harikube",
+  ]
+
+  pub charts: [String!]! = [
+    "harikube",
+  ]
+
+  pub version: String! = "1.15.0"
+
+  pub check(ws: Workspace!): Directory! {
+    Dagger
+      .directory
+      .withDirectory("containers", self.checkContainers)
+      .withDirectory("charts", self.checkCharts(ws))
+  }
+
+  pub checkContainers: Directory! {
+    let tag = `release-v${version}`
+
+    images.reduce(Dagger.directory) { dir, image =>
+      dir.withDirectory(image, self.preflight.checkContainer(image, tag))
+    }
+  }
+
+  let checkContainer(name: String!, tag: String!): Directory! {
+    self.preflight.checkContainer(`${name}:${tag}`)
+  }
+
+  pub checkCharts(ws: Workspace!): Directory! {
+    charts.reduce(Dagger.directory) { dir, chart =>
+      dir.withFile(chart + "/report.yaml", self.checkChart(ws, chart))
+    }
+  }
+
+  let checkChart(ws: Workspace!, name: String!): File! {
+    self.chartVerifier.verify(disable: ["chart-testing"]).directory(
+      name,
+      ws.directory("/harikube-helm-charts/" + name, gitignore: true),
+    )
+  }
+}
