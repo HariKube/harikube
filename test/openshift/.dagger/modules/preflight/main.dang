@@ -1,5 +1,5 @@
 type Preflight {
-  pub container: Container!
+  container: Container!
 
   new(
     """
@@ -57,7 +57,7 @@ type Preflight {
     binary
   }
 
-  pub checkContainer(
+  checkContainer(
     image: String!,
     certificationComponentId: String = null,
     platform: String = null,
