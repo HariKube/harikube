@@ -1,0 +1,7 @@
+{
+  "auths": {
+    "registry.harikube.info": {
+      "auth": "BASE64(username:password)"
+    }
+  }
+}

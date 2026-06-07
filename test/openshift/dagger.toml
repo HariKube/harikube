@@ -1,0 +1,10 @@
+[modules.dang-sdk]
+source = "github.com/dagger/dang-sdk"
+# Marker filename that skips generate when found at or above a Dang SDK module root.
+# settings.skipGenerateFilename = ""
+
+[modules.openshift]
+source = "."
+entrypoint = true
+
+# settings.dockerConfig = "file://./docker.json"
