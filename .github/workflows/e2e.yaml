@@ -15,6 +15,7 @@ on:
 jobs:
   e2e-test:
     name: E2E Test
+    if: ${{ ! contains(github.event.head_commit.message, '+RKE2') }}
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code

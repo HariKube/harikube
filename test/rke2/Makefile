@@ -18,7 +18,7 @@ _deploy:
 	vagrant ssh -c "sudo sh -c 'curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=v1.36.0+rke2r1 sh -'"
 	vagrant ssh -c "sudo systemctl enable rke2-server.service --now"
 
-	@rm -f $(KUBECONFIG) ; vagrant ssh -c "sudo cat /etc/rancher/rke2/rke2.yaml" > $(KUBECONFIG)
+	@rm -f $(KUBECONFIG) ||: ; mkdir -p $$(dirname $(KUBECONFIG)) ; vagrant ssh -c "sudo cat /etc/rancher/rke2/rke2.yaml" > $(KUBECONFIG)
 	@sed -i "s/127.0.0.1/$$(vagrant ssh-config | grep HostName | awk '{print $$2}')/" $(KUBECONFIG)
 
 	kubectl wait --for=condition=Ready node/harikube-rke2 --timeout=120s

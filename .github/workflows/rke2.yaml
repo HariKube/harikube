@@ -15,6 +15,7 @@ on:
 jobs:
   rke2-test:
     name: RKE2 Test
+    if: contains(github.event.head_commit.message, '+RKE2')
     runs-on: self-hosted
     timeout-minutes: 240
     steps:

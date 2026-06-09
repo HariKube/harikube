@@ -345,54 +345,6 @@
         }
       }
     },
-    "sonobuoy@0.57.3": {
-      "last_modified": "2026-04-23T13:07:47Z",
-      "resolved": "github:NixOS/nixpkgs/01fbdeef22b76df85ea168fbfe1bfd9e63681b30#sonobuoy",
-      "source": "devbox-search",
-      "version": "0.57.3",
-      "systems": {
-        "aarch64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/x91r1m3vz2fginxff33ic9igmrn2npcx-sonobuoy-0.57.3",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/x91r1m3vz2fginxff33ic9igmrn2npcx-sonobuoy-0.57.3"
-        },
-        "aarch64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/zrhhr8xxbmgxq2r3j08l9yvnwqcjimg0-sonobuoy-0.57.3",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/zrhhr8xxbmgxq2r3j08l9yvnwqcjimg0-sonobuoy-0.57.3"
-        },
-        "x86_64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/08n3mb9i3qwms0h2gfnqxncqgppklg2f-sonobuoy-0.57.3",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/08n3mb9i3qwms0h2gfnqxncqgppklg2f-sonobuoy-0.57.3"
-        },
-        "x86_64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/qk7nsi5zrzpmpkykayayvjazxyqifg0r-sonobuoy-0.57.3",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/qk7nsi5zrzpmpkykayayvjazxyqifg0r-sonobuoy-0.57.3"
-        }
-      }
-    },
     "vagrant@2.4.9": {
       "last_modified": "2026-05-20T06:38:13Z",
       "resolved": "github:NixOS/nixpkgs/d99b013d5d1931ad77fe3912ed218170dec5d9a4#vagrant",

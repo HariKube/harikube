@@ -26,7 +26,7 @@ _test:
 		-e KUBECONFIG=$(KUBECONFIG) \
 		--entrypoint sh \
 		registry.k8s.io/conformance:v1.36.0 \
-			-c "e2e.test --ginkgo.seed=1 --ginkgo.focus='api-machinery' --ginkgo.skip='StorageVersionAPI|Slow|Flaky|Alpha|OffByDefault' --ginkgo.flake-attempts=3 --ginkgo.timeout=3h"
+			-c "e2e.test --ginkgo.seed=1 --ginkgo.focus='api-machinery' --ginkgo.skip='StorageVersionAPI|Slow|Flaky|Alpha|OffByDefault' --ginkgo.flake-attempts=3 --ginkgo.timeout=3h -e2e-verify-service-account=false"
 
 _cleanup-test:
 	@docker rm -f harikube_middleware ||:

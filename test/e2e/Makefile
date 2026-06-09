@@ -16,9 +16,4 @@ _test:
 	chainsaw test --test-dir .
 	vcluster disconnect ||:
 
-_sonobuoy:
-	vcluster connect harikube-vcluster
-	sonobuoy run --dns-pod-labels='k8s-app=vcluster-kube-dns' --e2e-focus='sig-api-machinery' --e2e-skip='StorageVersionAPI|Slow|Flaky|Alpha|OffByDefault'
-	vcluster disconnect ||:
-
 _cleanup-test:

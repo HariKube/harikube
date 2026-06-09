@@ -4,7 +4,6 @@
       "gnused@4.9",
       "yamllint@1.37.1",
       "kyverno-chainsaw@0.2.15",
-      "sonobuoy@0.57.3",
       "kubeconform@0.7.0",
       "kind@0.31.0",
       "kubectl@1.36.0",
