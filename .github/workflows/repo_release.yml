@@ -26,7 +26,7 @@ jobs:
       id: extract_branch
 
     - name: Extract version
-      run: echo "version=$(cat harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+      run: echo "version=$(cat harikube-helm-charts/harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
       id: extract_version
 
     - name: Render manifests
@@ -208,7 +208,8 @@ jobs:
             ### Install scalable control pvclaimbinde
 
             ```bash
-            helm install harikube-control-plane ./harikube \
+            helm install harikube-control-plane oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube-helm-charts \
+              --version ${{ steps.extract_version.outputs.version }} \
               --debug \
               --namespace $(NAMESPACE) \
               --set middleware.create=false \
