@@ -6,4 +6,4 @@ metadata:
     harikube.info/harikube-middleware: enabled
     harikube.info/harikube-apiserver: enabled
     harikube.info/harikube-controllermanager: enabled
-    harikube.info/harikube-vcluster: enabled
+    harikube.info/harikube: enabled

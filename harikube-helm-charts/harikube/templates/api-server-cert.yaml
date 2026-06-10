@@ -22,10 +22,10 @@ spec:
   - kubernetes.default
   - kubernetes
   - localhost
-  - "*.harikube-vcluster.{{ .Release.Namespace }}.nodes.vcluster.com"
+  - "*.harikube.{{ .Release.Namespace }}.nodes.vcluster.com"
   - "*.nodes.vcluster.com"
-  - harikube-vcluster
-  - harikube-vcluster.{{ .Release.Namespace }}
+  - harikube
+  - harikube.{{ .Release.Namespace }}
   - harikube-api-server-svc.{{ .Release.Namespace }}
   - harikube-api-server-svc.{{ .Release.Namespace }}.svc
   - harikube-api-server-svc.{{ .Release.Namespace }}.cluster.local

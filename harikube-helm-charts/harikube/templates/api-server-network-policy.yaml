@@ -23,7 +23,7 @@ spec:
       {{- toYaml . | nindent 6 }}
       {{- end }}
       app: vcluster
-      release: harikube-vcluster
+      release: harikube
   policyTypes:
   - Ingress
 {{- end }}

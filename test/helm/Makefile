@@ -10,37 +10,26 @@ _deploy:
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-middleware=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-apiserver=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-controllermanager=enabled --overwrite
-	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-vcluster=enabled --overwrite
 
 	helm install harikube ../../harikube-helm-charts/harikube \
 		--debug \
+		--dependency-update \
 		--namespace $(NAMESPACE) \
 		--set middleware.image.tag=$(TAG) \
-		--set middleware.networkPolicy.create=true \
-		--set apiServer.networkPolicy.create=true \
-		--set controllerManager.networkPolicy.create=true \
-		--set vcluster.networkPolicy.create=true \
 		--set middleware.monitoring.create=true \
-		--set apiServer.monitoring.create=true \
-		--set controllerManager.monitoring.create=true
-	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 deployment/harikube-middleware-deploy --timeout=2m
-
-	helm install harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
-		--debug \
-		--namespace $(NAMESPACE) \
-		--values ../../harikube-helm-charts/harikube/vcluster/workload-config.yaml
-	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube-vcluster --timeout=5m
-
-	helm install harikube-control-plane ../../harikube-helm-charts/harikube \
-		--debug \
-		--namespace $(NAMESPACE) \
-		--set middleware.create=false \
+		--set middleware.networkPolicy.create=true \
 		--set apiServer.create=true \
-		--set controllerManager.create=true
+		--set apiServer.monitoring.create=true \
+		--set apiServer.networkPolicy.create=true \
+		--set controllerManager.create=true \
+		--set controllerManager.monitoring.create=true \
+		--set controllerManager.networkPolicy.create=true
+	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
 
 _test:
-	vcluster connect harikube-vcluster
-	chainsaw test --test-dir ../e2e
+	vcluster connect harikube
+	chainsaw test --test-dir .
 	vcluster disconnect ||:
 
 _cleanup-test:
+	vcluster disconnect ||:

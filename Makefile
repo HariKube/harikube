@@ -46,33 +46,6 @@ test:
 harikube-release:
 	rm -rf package ; mkdir -p package
 
-	@cp hack/namespace.yaml package/vcluster-harikube-sqlite-api-$(TAG).yaml
-	@cp hack/namespace.yaml package/vcluster-harikube-sqlite-workload-$(TAG).yaml
-
-	@helm template harikube harikube-helm-charts/harikube \
-		--namespace harikube \
-		--set middleware.image.tag=$(TAG) \
-		>> package/vcluster-harikube-sqlite-api-$(TAG).yaml
-	@helm template harikube harikube-helm-charts/harikube \
-		--namespace harikube \
-		--set middleware.image.tag=$(TAG) \
-		>> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
-
-	@helm template harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
-		--namespace harikube \
-		--values harikube-helm-charts/harikube/vcluster/api-config.yaml \
-		--set controlPlane.distro.k8s.image.tag=$$(grep tag harikube-helm-charts/harikube/vcluster/api-config.yaml | awk '{print $$2}') \
-		>> package/vcluster-harikube-sqlite-api-$(TAG).yaml
-	@helm template harikube-vcluster https://charts.loft.sh/charts/vcluster-0.32.1.tgz \
-		--namespace harikube \
-		--values harikube-helm-charts/harikube/vcluster/workload-config.yaml \
-		--set controlPlane.distro.k8s.image.tag=$$(grep tag harikube-helm-charts/harikube/vcluster/workload-config.yaml | awk '{print $$2}') \
-		>> package/vcluster-harikube-sqlite-workload-$(TAG).yaml
-
-	@helm template harikube-helm-charts/harikube \
-		--set middleware.create=false \
-		--set mutatingAdmissionPolicy.create=true \
-		>> package/skip-controller-manager-metadata-caching.yaml
-
 	@helm package harikube-helm-charts/harikube \
+		--dependency-update \
 		-d package

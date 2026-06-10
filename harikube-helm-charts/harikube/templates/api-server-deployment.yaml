@@ -15,7 +15,7 @@ spec:
       {{- toYaml . | nindent 6 }}
       {{- end }}
       app: vcluster
-      release: harikube-vcluster
+      release: harikube
   template:
     metadata:
       {{- with .Values.apiServer.podAnnotations }}
@@ -28,7 +28,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
         app: vcluster
-        release: harikube-vcluster
+        release: harikube
     spec:
       terminationGracePeriodSeconds: 30
       {{- with .Values.apiServer.affinity }}

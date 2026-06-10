@@ -1,0 +1,9 @@
+dependencies:
+- name: vcluster
+  repository: https://charts.loft.sh
+  version: 0.32.1
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.15.5
+digest: sha256:23f4de0bd66d20e51e126ed3ce1388f226fcdb0a7d785cced349996c13e1c4dc
+generated: "2026-06-09T17:38:50.138846297+02:00"

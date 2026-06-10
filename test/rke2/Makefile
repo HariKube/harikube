@@ -38,12 +38,13 @@ _test-host:
 	$(MAKE) -C ../api _test
 
 _test-vcluster:
-	vcluster connect harikube-vcluster
+	vcluster connect harikube
 	$(MAKE) -C ../api _test
 	vcluster disconnect ||:
 
 .PHONY: cleanup-test
 cleanup-test:
+	vcluster disconnect ||:
 	@vagrant destroy -f ||:
 	
 _cleanup-test:
