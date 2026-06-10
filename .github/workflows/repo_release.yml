@@ -26,7 +26,7 @@ jobs:
       id: extract_branch
 
     - name: Extract version
-      run: echo "version=$(cat harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+      run: echo "version=$(cat harikube-helm-charts/harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
       id: extract_version
 
     - name: Render manifests
