@@ -493,5 +493,7 @@ vcluster:
   networking:
     replicateServices:
       fromHost:
+      - from: harikube/harikube
+        to: harikube/harikube
       - from: harikube/harikube-middleware-svc
         to: harikube/harikube-middleware-svc

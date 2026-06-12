@@ -164,7 +164,7 @@ jobs:
 
             ```bash
             --set apiServer.create=true
-            --set controllerManager.create=true
+            --set controllerManager.create=true # By default all controllers are disabled, enable controllers you want to run.
             ```
 
             You can enable network policies for control plane.
@@ -182,6 +182,18 @@ jobs:
             ```
 
             ## vCluster connection
+
+            Connect via vCluster CLI.
+
+            ```bash
+            vcluster connect harikube
+            ```
+
+            Connect via vCluster KUBECONFIG.
+            
+            ```bash
+            kubectl get secret -n harikube vc-harikube -o yaml
+            ```
 
             > 🔓 vCluster simplifies the operational workflow by automatically updating your local environment. For more details how to disable this behaviour, or how to get config by service account for example please wisit the official docs` [Access and expose vCluster](https://www.vcluster.com/docs/vcluster/manage/accessing-vcluster) section.
 

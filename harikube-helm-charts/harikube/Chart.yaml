@@ -15,7 +15,3 @@ dependencies:
 - name: vcluster
   version: "0.32.1"
   repository: "https://charts.loft.sh"
-- name: cert-manager
-  version: "v1.15.5"
-  repository: "https://charts.jetstack.io"
-  condition: certManager.create
