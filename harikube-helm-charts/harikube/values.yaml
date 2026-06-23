@@ -18,6 +18,12 @@ middleware:
     pullPolicy: IfNotPresent
     tag: release-v1.15.0
   env: []
+  endPoint:
+    url: sqlite:///db/main.db?_journal=WAL&cache=shared
+    caPEM: ""
+    certPEM: ""
+    keyPEM: ""
+    skipVerify: false
   args:
   # - --debug=true
   - --log-format=json
@@ -33,11 +39,6 @@ middleware:
   - --datastore-max-idle-connections=50
   - --datastore-max-open-connections=90
   - --datastore-connection-max-lifetime=5m
-  - --endpoint=sqlite:///db/main.db?_journal=WAL&cache=shared
-  # - --ca-file=/etc/db/tls/database.crt
-  # - --cert-file=/etc/db/tls/database.crt
-  # - --key-file=/etc/db/tls/database.key
-  # - --skip-verify=true
   # - --watch-progress-notify-interval=5s
   # - --compact-interval=5m
   # - --compact-interval-jitter=0
@@ -102,9 +103,6 @@ middleware:
   - name: harikube-middleware-crt
     secret:
       secretName: harikube-middleware-crt
-  # - name: harikube-endpoint-tls
-  #   secret:
-  #     secretName: harikube-endpoint-tls
   - name: harikube-middleware-pvc
     persistentVolumeClaim:
       claimName: harikube-middleware-pvc
@@ -114,9 +112,6 @@ middleware:
   - name: harikube-middleware-crt
     mountPath: /etc/harikube-middleware-crt
     readOnly: true
-  # - name: harikube-endpoint-tls
-  #   mountPath: /etc/db/tls
-  #   readOnly: true
   - name: harikube-middleware-pvc
     mountPath: /db
   - name: tmp

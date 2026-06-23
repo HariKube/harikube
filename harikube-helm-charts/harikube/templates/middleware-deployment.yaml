@@ -49,16 +49,28 @@ spec:
           {{- toYaml . | nindent 8 }}
         {{- end }}
         args:
+        - --endpoint={{ .Values.middleware.endPoint.url }}
+        {{ if .Values.middleware.endPoint.caPEM -}}
+        - --ca-file=/etc/db/tls/ca.crt
+        - --cert-file=/etc/db/tls/tls.crt
+        - --key-file=/etc/db/tls/tls.key
+        - --skip-verify={{ .Values.middleware.endPoint.skipVerify }}
+        {{ end }}
           {{- toYaml .Values.middleware.args | nindent 8 }}
         ports:
         - containerPort: {{ .Values.middleware.service.apiPort.port }}
           name: api-port
         - containerPort: {{ .Values.middleware.service.metrics.port }}
           name: metrics
-        {{- with .Values.middleware.volumeMounts }}
         volumeMounts:
+        {{- with .Values.middleware.volumeMounts }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{ if .Values.middleware.endPoint.caPEM -}}
+        - name: harikube-endpoint-tls
+          mountPath: /etc/db/tls
+          readOnly: true
+        {{ end }}
         livenessProbe:
           {{- toYaml .Values.middleware.livenessProbe | nindent 10 }}
         readinessProbe:
@@ -67,8 +79,13 @@ spec:
           {{- toYaml .Values.middleware.securityContext | nindent 10 }}
         resources:
           {{- toYaml .Values.middleware.resources | nindent 10 }}
-      {{- with .Values.middleware.volumes }}
       volumes:
+      {{- with .Values.middleware.volumes }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{ if .Values.middleware.endPoint.caPEM -}}
+      - name: harikube-endpoint-tls
+        secret:
+          secretName: harikube-middleware-endpoint-secret
+      {{ end }}
 {{- end }}

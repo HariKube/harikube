@@ -11,6 +11,6 @@ lint:
 
 .PHONY: render
 render:
-	@helm template harikube ./harikube
+	@helm template --debug harikube ./harikube
 
 
