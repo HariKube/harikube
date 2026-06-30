@@ -29,21 +29,6 @@ jobs:
       run: echo "version=$(cat harikube-helm-charts/harikube/Chart.yaml | grep '^version' | cut -d' ' -f2)" >> $GITHUB_OUTPUT
       id: extract_version
 
-    - name: Render manifests
-      run: make harikube-release
-      env:
-        TAG: ${{ github.ref_name }}
-
-    - name: Helm login
-      run: |
-        echo "${{ secrets.REGISTRY_TOKEN }}" | devbox run helm registry login ${{ vars.REGISTRY }} \
-          --username "${{ vars.REGISTRY_USER }}" \
-          --password-stdin
-
-    - name: Helm push chart
-      run: |
-        devbox run helm push package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}
-
     - name: Create release
       if: ${{ !startsWith(github.ref, 'refs/heads/dev-') }}
       uses: mhmxs/milestone-release-action@main
@@ -134,7 +119,7 @@ jobs:
             - Cert-manager
 
             ```bash
-            helm install harikube oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube-helm-charts \
+            helm install harikube oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube \
               --version ${{ steps.extract_version.outputs.version }} \
               --dependency-update \
               --create-namespace \
@@ -217,10 +202,6 @@ jobs:
             CA_CERT=$(kubectl get secret -n harikube remote-your-service-account-name-x-default-x-harikube -o jsonpath='{.data.ca\.crt}' | base64 -d)
             ```
 
-            ## Customization
-
-            The manifests gereted for the release are covering basic setup. You can customize your setup, you can find the manifests [here](https://github.com/HariKube/harikube/tree/${{ github.ref_name }}/harikube-helm-charts/harikube/vcluster).
-
             ## Important Requirement
 
             To use these features to their full potential, you cannot use "standard" Kubernetes. You must use the patched images provided by us These patches allow the Kubernetes API to understand the special storage instructions Kine is waiting for.
@@ -231,6 +212,4 @@ jobs:
             ## Release Notes
 
         draft: true
-        prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}
-        files: package/harikube-helm-charts-${{ steps.extract_version.outputs.version }}.tgz
-  
+        prerelease: ${{ startsWith(github.ref, 'refs/heads/rc-') || startsWith(github.ref, 'refs/heads/beta-') || startsWith(github.ref, 'refs/heads/alpha-') }}  
