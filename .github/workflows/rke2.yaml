@@ -21,6 +21,7 @@ jobs:
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
+        submodules: true
 
       - name: Cleanup system
         run: docker system prune -af

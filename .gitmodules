@@ -1,0 +1,4 @@
+[submodule "harikube-helm-charts"]
+	path = harikube-helm-charts
+	url = https://github.com/harikube/harikube-helm-charts
+	branch = release-v0.15.0
