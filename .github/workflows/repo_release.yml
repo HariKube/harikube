@@ -15,7 +15,8 @@ jobs:
     timeout-minutes: 2
     steps:
     - uses: actions/checkout@v4
-      submodules: true
+      with:
+          submodules: true
 
     - name: Install devbox
       uses: jetify-com/devbox-install-action@v0.15.0
