@@ -9,15 +9,14 @@ type Openshift {
     self
   }
 
-  pub images: [String!]! = [
-    "quay.io/harikube/harikube",
+  pub images: [[String!]]! = [
+    [ "quay.io/harikube/harikube", "release-v1.15.0" ],
+    #[ "quay.io/harikube/kubernetes", "v1.36.0" ],
   ]
 
   pub charts: [String!]! = [
     "harikube",
   ]
-
-  pub version: String! = "1.15.0"
 
   pub check(ws: Workspace!): Directory! {
     Dagger
@@ -27,10 +26,11 @@ type Openshift {
   }
 
   pub checkContainers: Directory! {
-    let tag = `release-v${version}`
-
     images.reduce(Dagger.directory) { dir, image =>
-      dir.withDirectory(image, self.preflight.checkContainer(image, tag))
+      let name = image[0] ?? ""
+      let tag = image[1] ?? ""
+
+      dir.withDirectory(name, self.preflight.checkContainer(name, tag))
     }
   }
 
