@@ -1,25 +1,25 @@
 {
-    "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.1/.schema/devbox.schema.json",
-    "packages": [
-      "gnused@4.9",
-      "yamllint@1.37.1",
-      "kyverno-chainsaw@0.2.15",
-      "kubeconform@0.7.0",
-      "kind@0.31.0",
-      "kubectl@1.36.0",
-      "kubernetes-helm@3.20.2",
-      "vcluster@0.33.2",
-      "vagrant@2.4.9"
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.1/.schema/devbox.schema.json",
+  "packages": [
+    "gnused@4.9",
+    "yamllint@1.37.1",
+    "kyverno-chainsaw@0.2.15",
+    "kubeconform@0.7.0",
+    "kind@0.31.0",
+    "kubectl@1.36.0",
+    "kubernetes-helm@3.20.2",
+    "vcluster@0.33.2",
+    "vagrant@2.4.9",
+    "github:dagger/nix#packages.x86_64-linux.dagger"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Welcome to devbox!' > /dev/null"
     ],
-    "shell": {
-      "init_hook": [
-        "echo 'Welcome to devbox!' > /dev/null"
-      ],
-      "scripts": {
-        "test": [
-          "echo \"Error: no test specified\" && exit 1"
-        ]
-      }
+    "scripts": {
+      "test": [
+        "echo \"Error: no test specified\" && exit 1"
+      ]
     }
   }
-  
+}

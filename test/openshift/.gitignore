@@ -10,4 +10,4 @@ devenv.local.yaml
 .pre-commit-config.yaml
 
 docker.json
-report
+report*

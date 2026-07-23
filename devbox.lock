@@ -5,6 +5,10 @@
       "last_modified": "2026-04-15T12:22:54Z",
       "resolved": "github:NixOS/nixpkgs/566acc07c54dc807f91625bb286cb9b321b5f42a?lastModified=1776255774"
     },
+    "github:dagger/nix#packages.x86_64-linux.dagger": {
+      "last_modified": "2026-06-17T17:43:00Z",
+      "resolved": "github:dagger/nix/c93d69f685b8a58eaa767eaaf189b0ac6f4f741a?lastModified=1781718180#packages.x86_64-linux.dagger"
+    },
     "gnused@4.9": {
       "last_modified": "2026-05-21T08:15:18Z",
       "resolved": "github:NixOS/nixpkgs/4a29d733e8a7d5b824c3d8c958a946a9867b3eb2#gnused",
