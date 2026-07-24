@@ -19,7 +19,7 @@ build:
 .PHONY: test-all
 test-all:
 	$(MAKE) -C api test
-	$(MAKE) -C e2e test
+	$(MAKE) -C openshift test
 	$(MAKE) -C helm test
 	$(MAKE) -C rke2 test
 

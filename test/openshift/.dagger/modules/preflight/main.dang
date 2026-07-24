@@ -1,0 +1,85 @@
+type Preflight {
+  pub container: Container!
+
+  new(
+    """
+    Preflight CLI version (default: latest).
+    """
+    version: String = null,
+    """
+    Docker config to use for authentication.
+    """
+    dockerConfig: Secret = null,
+    """
+    Pyxis API token to use for authentication.
+    """
+    pyxisApiToken: Secret = null,
+  ) {
+    self.container = Dagger
+      .container
+      .from("redhat/ubi10:10.2")
+      .withFile("/usr/local/bin/", download(version), permissions: 755)
+      .withEnvVariable("TEMPDIR", "/var/preflight/tmp")
+      .withMountedCache("$TEMPDIR", Dagger.cacheVolume("preflight-tmp"), expand: true)
+      .withEnvVariable("PFLT_ARTIFACTS", "/work/out")
+      .withExec(["mkdir", "-p", "$PFLT_ARTIFACTS"], expand: true)
+      .withEnvVariable("PFLT_LOGFILE", "${PFLT_ARTIFACTS}/preflight.log", expand: true)
+
+    if (dockerConfig != null) {
+      self.container = self
+        .container
+        .withEnvVariable("PFLT_DOCKERCONFIG", "/root/.docker/config.json")
+        .withMountedSecret("$PFLT_DOCKERCONFIG", dockerConfig, expand: true)
+    }
+
+    if (pyxisApiToken != null) {
+      self.container = self.container.withSecretVariable(
+        "PFLT_PYXIS_API_TOKEN",
+        pyxisApiToken,
+      )
+    }
+
+    self
+  }
+
+  let download(version: String, platform: Platform! = Dagger.defaultPlatform): File! {
+    let binary = Dagger
+      .github
+      .release(version, "redhat-openshift-ecosystem/openshift-preflight")
+      .asset("preflight-" + toString(platform).trim("\"").replace("/", "-"))
+      .file
+      .withName("preflight")
+
+    if (binary == null) {
+      raise "binary not found"
+    }
+
+    binary
+  }
+
+  pub checkContainer(
+    image: String!,
+    certificationComponentId: String = null,
+    platform: String = null,
+    submit: Boolean! = false,
+  ): Directory! {
+    let args = ["preflight", "check", "container", image]
+
+    if (certificationComponentId != null) {
+      args += ["--certification-component-id", certificationComponentId]
+    }
+
+    if (platform != null) {
+      args += ["--platform", platform]
+    }
+
+    if (submit) {
+      args += ["--submit"]
+    }
+
+    self
+      .container
+      .withExec(args)
+      .directory("/work/out")
+  }
+}

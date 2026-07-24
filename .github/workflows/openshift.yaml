@@ -1,0 +1,43 @@
+name: OpenShift Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  
+jobs:
+  openshift-test:
+    name: OpenShift Test
+    if: contains(github.event.head_commit.message, '+OS')
+    runs-on: self-hosted
+    timeout-minutes: 90
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: 'true'
+
+      - name: OpenShift Setup Tests
+        run: devbox run make -C test/openshift build setup-test _load _deploy
+        env:
+          TAG: api
+
+      - name: OpenShift Test
+        run: devbox run make -C test/openshift _test
+
+      - name: RKE2 Cleanup Tests
+        if: always()
+        run: devbox run make -C test/openshift cleanup-test
+

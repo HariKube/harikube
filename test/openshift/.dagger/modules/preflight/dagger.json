@@ -1,0 +1,13 @@
+{
+  "name": "preflight",
+  "engineVersion": "v0.20.8",
+  "sdk": {
+    "source": "dang"
+  },
+  "include": [
+    "!tests"
+  ],
+  "dependencies": [
+    "github.com/mhmxs/daggerverse/github"
+  ]
+}
