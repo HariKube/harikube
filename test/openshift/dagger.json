@@ -1,0 +1,14 @@
+{
+  "name": "openshift",
+  "engineVersion": "v0.20.8",
+  "sdk": {
+    "source": "dang"
+  },
+  "include": [
+    "!tests"
+  ],
+  "dependencies": [
+    ".dagger/modules/preflight",
+    ".dagger/modules/chart-verifier"
+  ]
+}

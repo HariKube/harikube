@@ -1,0 +1,86 @@
+type ChartVerifier {
+  pub container: Container!
+
+  new(
+    """
+    Chart verifier CLI version (default: latest).
+    """
+    version: String! = "latest",
+  ) {
+    self.container = Dagger
+      .container
+      .from("quay.io/redhat-certification/chart-verifier:" + version)
+
+    self
+  }
+
+  pub verify(
+    """
+    Version of OpenShift used in the cluster.
+    """
+    openShiftVersion: String = null,
+    """
+    Only the informed checks will be enabled.
+    """
+    enable: [String!]! = [],
+    """
+    All checks will be enabled except the informed ones.
+    """
+    disable: [String!]! = [],
+  ): Verify! {
+    Verify(
+      self,
+      openShiftVersion: openShiftVersion,
+      enable: enable,
+      disable: disable,
+    )
+  }
+}
+
+type Verify {
+  let parent: ChartVerifier!
+
+  let openShiftVersion: String
+  let enable: [String!]!
+  let disable: [String!]!
+
+  pub uri(chart: String!): File! {
+    self.verify(chart)
+  }
+
+  pub archive(chart: File!): File! {
+    let workdir = Dagger.directory.withFile("", chart)
+
+    self.verify(chart.name, workdir)
+  }
+
+  pub directory(name: String!, chart: Directory!): File! {
+    self.verify(name, Dagger.directory.withDirectory(name, chart))
+  }
+
+  let verify(chart: String!, workdir: Directory = null): File! {
+    let args = ["chart-verifier", "verify", chart]
+
+    if (openShiftVersion != null) {
+      args += ["--openshift-version", openShiftVersion]
+    }
+
+    if (!enable.isEmpty) {
+      args = enable.reduce(args) { args, check => args + ["--enable", check] }
+    }
+
+    if (!disable.isEmpty) {
+      args = disable.reduce(args) { args, check => args + ["--disable", check] }
+    }
+
+    let container = parent.container.withWorkdir("/work/src")
+
+    if (workdir != null) {
+      container = container.withMountedDirectory(".", workdir)
+    }
+
+    container
+      .withExec(args, redirectStdout: "/work/report.yaml")
+      .file("/work/report.yaml")
+  }
+}
