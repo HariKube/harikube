@@ -12,6 +12,9 @@ type Openshift {
   pub images: [[String!]]! = [
     [ "quay.io/harikube/harikube", "release-v1.15.0" ],
     #[ "quay.io/harikube/kubernetes", "v1.36.0" ],
+    #[ "quay.io/harikube/kube-apiserver", "v1.36.0" ],
+    #[ "quay.io/harikube/kube-controller-manager", "v1.36.0" ],
+    #[ "ghcr.io/loft-sh/vcluster-pro", "0.32.1" ],
   ]
 
   pub charts: [String!]! = [

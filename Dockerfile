@@ -49,7 +49,15 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM scratch AS binary
 COPY --from=build /go/src/github.com/k3s-io/kine/bin /bin
 
-FROM alpine:3.23 AS package
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS package
+LABEL name="HariKube"
+LABEL vendor="inspirNation Bt."
+LABEL version="0.15.0"
+LABEL release="0"
+LABEL summary="HariKube Kubernetes Hyper-scaler"
+LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."
+LABEL maintainer="richard.kovacs@harikube.com"
+COPY LICENSE /licenses/LICENSE
 COPY --from=build /go/src/github.com/k3s-io/kine/bin/kine /bin/kine
 RUN mkdir /db && chown nobody /db
 VOLUME /db
@@ -86,12 +94,20 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM scratch AS multi-arch-binary
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin /
 
-FROM alpine:3.23 AS multi-arch-package
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS multi-arch-package
+LABEL name="HariKube"
+LABEL vendor="inspirNation Bt."
+LABEL version="0.15.0"
+LABEL release="0"
+LABEL summary="HariKube Kubernetes Hyper-scaler"
+LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."
+LABEL maintainer="richard.kovacs@harikube.com"
 ARG TARGETARCH
 ENV ARCH=${TARGETARCH}
 RUN if [ "${TARGETARCH}" == "arm/v7" ]; then \
     ARCH=arm; \
     fi
+COPY LICENSE /licenses/LICENSE
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin/kine-$ARCH /bin/kine
 RUN mkdir /db && chown nobody /db
 VOLUME /db
