@@ -1,5 +1,5 @@
 type ChartVerifier {
-  pub container: Container!
+  container: Container!
 
   new(
     """
@@ -14,7 +14,7 @@ type ChartVerifier {
     self
   }
 
-  pub verify(
+  verify(
     """
     Version of OpenShift used in the cluster.
     """
@@ -44,17 +44,17 @@ type Verify {
   let enable: [String!]!
   let disable: [String!]!
 
-  pub uri(chart: String!): File! {
+  uri(chart: String!): File! {
     self.verify(chart)
   }
 
-  pub archive(chart: File!): File! {
+  archive(chart: File!): File! {
     let workdir = Dagger.directory.withFile("", chart)
 
     self.verify(chart.name, workdir)
   }
 
-  pub directory(name: String!, chart: Directory!): File! {
+  directory(name: String!, chart: Directory!): File! {
     self.verify(name, Dagger.directory.withDirectory(name, chart))
   }
 

@@ -1,5 +1,5 @@
 name = "openshift"
-engineVersion = "v1.0.0-beta.3"
+engineVersion = "v1.0.0"
 runtime.source = "dang"
 include = ["!tests"]
 

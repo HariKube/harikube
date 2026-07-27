@@ -4,5 +4,5 @@
   dotenv.enable = true;
 
   dagger.enable = true;
-  env.DAGGER_X_RELEASE = "v0.20.8";
+  env.DAGGER_X_RELEASE = "v1.0.0-beta.7";
 }
