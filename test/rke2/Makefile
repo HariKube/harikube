@@ -15,7 +15,8 @@ _load:
 _deploy:
 	vagrant ssh -c "sudo systemctl enable harikube.service --now"
 
-	vagrant ssh -c "sudo sh -c 'curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=v1.36.0+rke2r1 sh -'"
+# 	Release list: https://github.com/rancher/rke2/releases#release-v1.36.2+rke2r1
+	vagrant ssh -c "sudo sh -c 'curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=v1.36.2+rke2r1 sh -'"
 	vagrant ssh -c "sudo systemctl enable rke2-server.service --now"
 
 	@rm -f $(KUBECONFIG) ||: ; mkdir -p $$(dirname $(KUBECONFIG)) ; vagrant ssh -c "sudo cat /etc/rancher/rke2/rke2.yaml" > $(KUBECONFIG)
