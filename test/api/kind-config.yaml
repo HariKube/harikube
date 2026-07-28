@@ -8,8 +8,8 @@ featureGates:
   "VolumeAttributesClass": true
 nodes:
 - role: control-plane
-  # kind build node-image v1.36.0 --image=mhmxs/node:v1.36.0
-  image: mhmxs/node:v1.36.0
+  # kind build node-image v1.36.2 --image=mhmxs/node:v1.36.2
+  image: mhmxs/node:v1.36.2
   kubeadmConfigPatches:
   - |
     kind: ClusterConfiguration
