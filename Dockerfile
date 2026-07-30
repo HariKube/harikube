@@ -53,7 +53,7 @@ FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS package
 ARG NOCGO
 LABEL name="HariKube"
 LABEL vendor="inspirNation Bt."
-LABEL version="0.15.0"
+LABEL version="0.16.3"
 LABEL release="0"
 LABEL summary="HariKube Kubernetes Hyper-scaler"
 LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."
@@ -99,7 +99,7 @@ COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin /
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS multi-arch-package
 LABEL name="HariKube"
 LABEL vendor="inspirNation Bt."
-LABEL version="0.15.0"
+LABEL version="0.16.3"
 LABEL release="0"
 LABEL summary="HariKube Kubernetes Hyper-scaler"
 LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster into a zero-effort Platform-as-a-Service. By leveraging a Unified Service Model, it removes technical bottlenecks to let your services run as native Kube citizens."

@@ -11,28 +11,40 @@
         "image_id": "sha256:9abae2d1fdfa15dfcc7890a7f829b5f1a4e1bf9f960dc7a8460a7503b6cacfad",
         "labels": [
             {
-                "name": "release",
-                "value": "0"
-            },
-            {
-                "name": "url",
-                "value": "https://catalog.redhat.com/en/search?searchType=containers"
-            },
-            {
                 "name": "architecture",
                 "value": "s390x"
             },
             {
-                "name": "build-date",
+                "name": "distribution-scope",
+                "value": "public"
+            },
+            {
+                "name": "io.k8s.display-name",
+                "value": "Red Hat Universal Base Image 9 Micro"
+            },
+            {
+                "name": "io.openshift.expose-services",
+                "value": ""
+            },
+            {
+                "name": "org.opencontainers.image.created",
                 "value": "2026-07-22T09:31:58Z"
             },
             {
-                "name": "com.redhat.component",
-                "value": "ubi9-micro-container"
+                "name": "vcs-ref",
+                "value": "97262785bdef2694cdc29ef7ef158812c44b97e0"
+            },
+            {
+                "name": "vendor",
+                "value": "inspirNation Bt."
             },
             {
                 "name": "com.redhat.license_terms",
                 "value": "https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI"
+            },
+            {
+                "name": "description",
+                "value": "Kubernetes HariKube edition is a horizontally scalable Kubernetes edition."
             },
             {
                 "name": "io.buildah.version",
@@ -43,60 +55,48 @@
                 "value": "Very small image which doesn't install the package manager."
             },
             {
-                "name": "org.opencontainers.image.created",
-                "value": "2026-07-22T09:31:58Z"
-            },
-            {
-                "name": "summary",
-                "value": "Kubernetes HariKube Edition"
-            },
-            {
-                "name": "cpe",
-                "value": "cpe:/a:redhat:enterprise_linux:9::appstream"
-            },
-            {
-                "name": "distribution-scope",
-                "value": "public"
+                "name": "maintainer",
+                "value": "richard.kovacs@harikube.com"
             },
             {
                 "name": "org.opencontainers.image.revision",
                 "value": "97262785bdef2694cdc29ef7ef158812c44b97e0"
             },
             {
-                "name": "vcs-ref",
-                "value": "97262785bdef2694cdc29ef7ef158812c44b97e0"
+                "name": "url",
+                "value": "https://catalog.redhat.com/en/search?searchType=containers"
             },
             {
                 "name": "vcs-type",
                 "value": "git"
             },
             {
-                "name": "vendor",
-                "value": "inspirNation Bt."
+                "name": "build-date",
+                "value": "2026-07-22T09:31:58Z"
             },
             {
-                "name": "io.openshift.expose-services",
-                "value": ""
+                "name": "com.redhat.component",
+                "value": "ubi9-micro-container"
             },
             {
-                "name": "maintainer",
-                "value": "richard.kovacs@harikube.com"
+                "name": "cpe",
+                "value": "cpe:/a:redhat:enterprise_linux:9::appstream"
             },
             {
                 "name": "name",
                 "value": "HariKube"
             },
             {
+                "name": "release",
+                "value": "0"
+            },
+            {
+                "name": "summary",
+                "value": "Kubernetes HariKube Edition"
+            },
+            {
                 "name": "version",
                 "value": ""
-            },
-            {
-                "name": "description",
-                "value": "Kubernetes HariKube edition is a horizontally scalable Kubernetes edition."
-            },
-            {
-                "name": "io.k8s.display-name",
-                "value": "Red Hat Universal Base Image 9 Micro"
             }
         ],
         "layers": [
@@ -146,12 +146,12 @@
     "repositories": [
         {
             "published": false,
-            "push_date": "2026-07-27T11:04:47Z",
+            "push_date": "2026-07-30T14:32:13Z",
             "registry": "quay.io",
             "repository": "harikube/kubernetes",
             "tags": [
                 {
-                    "added_date": "2026-07-27T11:04:47Z",
+                    "added_date": "2026-07-30T14:32:13Z",
                     "name": "latest"
                 }
             ],

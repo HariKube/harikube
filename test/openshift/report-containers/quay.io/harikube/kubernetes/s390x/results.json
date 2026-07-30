@@ -15,7 +15,7 @@
             },
             {
                 "name": "HasUniqueTag",
-                "elapsed_time": 580,
+                "elapsed_time": 536,
                 "description": "Checking if container has a tag other than 'latest', so that the image can be uniquely identified."
             },
             {
@@ -25,7 +25,7 @@
             },
             {
                 "name": "HasNoProhibitedPackages",
-                "elapsed_time": 45,
+                "elapsed_time": 43,
                 "description": "Checks to ensure that the image in use does not include prohibited packages, such as Red Hat Enterprise Linux (RHEL) kernel packages."
             },
             {
@@ -40,12 +40,12 @@
             },
             {
                 "name": "HasModifiedFiles",
-                "elapsed_time": 11117,
+                "elapsed_time": 10259,
                 "description": "Checks that no files installed via RPM in the base Red Hat layer have been modified"
             },
             {
                 "name": "BasedOnUbi",
-                "elapsed_time": 967,
+                "elapsed_time": 968,
                 "description": "Checking if the container's base image is based upon the Red Hat Universal Base Image (UBI) or Red Hat Hardened Images (RHHI)"
             },
             {

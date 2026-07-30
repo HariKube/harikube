@@ -10,10 +10,10 @@ type Openshift {
   }
 
   pub images: [[String!]]! = [
-    [ "quay.io/harikube/harikube", "release-v0.15.0" ],
+    [ "quay.io/harikube/harikube", "release-v0.16.3" ],
     [ "quay.io/harikube/kubernetes", "v1.36.2" ],
-    [ "quay.io/harikube/kube-apiserver", "v1.36.2" ],
-    [ "quay.io/harikube/kube-controller-manager", "v1.36.2" ],
+    [ "quay.io/harikube/kube-apiserver", "v1.36.2-rootless" ],
+    [ "quay.io/harikube/kube-controller-manager", "v1.36.2-rootless" ],
     [ "quay.io/harikube/vcluster-pro", "0.32.1" ],
   ]
 

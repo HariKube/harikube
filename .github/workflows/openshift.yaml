@@ -35,7 +35,10 @@ jobs:
           TAG: api
 
       - name: OpenShift Test
-        run: devbox run make -C test/openshift _test
+        run: |
+          devbox run make -C test/openshift _test
+          ls -1 test/openshift/report-charts | xargs -I {} sh -c 'echo "--- Helm Chart: {} ---" ; cat test/openshift/report-charts/{}/report.yaml'
+          ls -1 test/openshift/report-containers/quay.io/harikube | xargs -I {} sh -c 'echo "--- Container: {} ---" ; cat test/openshift/report-containers/quay.io/harikube/{}/amd64/results.json'
 
       - name: RKE2 Cleanup Tests
         if: always()

@@ -59,7 +59,20 @@ type Verify {
   }
 
   let verify(chart: String!, workdir: Directory = null): File! {
-    let args = ["chart-verifier", "verify", chart]
+    let args = [
+      "chart-verifier",
+      "verify",
+      chart,
+      "--chart-set=middleware.networkPolicy.create=true",
+      "--chart-set=middleware.networkPolicy.create=true",
+      "--chart-set=apiServer.create=true",
+      "--chart-set=apiServer.monitoring.create=true",
+      "--chart-set=apiServer.networkPolicy.create=true",
+      "--chart-set=controllerManager.create=true",
+      "--chart-set=controllerManager.create=true",
+      "--chart-set=controllerManager.monitoring.create=true",
+      "--chart-set=controllerManager.networkPolicy.create=true",
+      ]
 
     if (openShiftVersion != null) {
       args += ["--openshift-version", openShiftVersion]
