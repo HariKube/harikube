@@ -96,7 +96,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM scratch AS multi-arch-binary
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin /
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest AS multi-arch-package
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/ubi-micro:latest AS multi-arch-package
 LABEL name="HariKube"
 LABEL vendor="inspirNation Bt."
 LABEL version="0.16.3"
