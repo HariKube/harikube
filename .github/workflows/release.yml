@@ -88,6 +88,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        if: github.repository_owner == 'k3s-io'
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         id: build
         with:
@@ -96,8 +97,10 @@ jobs:
           target: multi-arch-package
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:latest
-            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:${{ github.ref_name }}
+            ${{ env.DOCKER_USERNAME }}/kine:latest
+            ${{ env.DOCKER_USERNAME }}/kine:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/kine:latest
+            ghcr.io/${{ github.repository_owner }}/kine:${{ github.ref_name }}
 
       - name: Attest images
         if: github.repository_owner == 'k3s-io'
@@ -120,15 +123,13 @@ jobs:
             CGO_ENABLED=0
             NOCGO=-nocgo
           tags: |
-            ${{ env.DOCKER_USERNAME }}/kine:latest-nocgo
-            ${{ env.DOCKER_USERNAME }}/kine:${{ github.ref_name }}-nocgo
-            ghcr.io/${{ github.repository_owner }}/kine:latest-nocgo
-            ghcr.io/${{ github.repository_owner }}/kine:${{ github.ref_name }}-nocgo
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube:${{ github.ref_name }}
 
       - name: Attest images (nocgo)
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4
         id: attest-nocgo
         with:
-          subject-name: ghcr.io/${{ github.repository_owner }}/kine
+          subject-name: ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube
           subject-digest: ${{ steps.build-nocgo.outputs.digest }}
           push-to-registry: true
