@@ -17,7 +17,7 @@ jobs:
     name: OpenShift Test
     if: contains(github.event.head_commit.message, '+OS')
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -34,11 +34,18 @@ jobs:
         env:
           TAG: api
 
-      - name: OpenShift Test
+      - name: Helm chart test
         run: |
-          devbox run make -C test/openshift _test
+          devbox run make -C test/openshift _testCharts
           ls -1 test/openshift/report-charts | xargs -I {} sh -c 'echo "--- Helm Chart: {} ---" ; cat test/openshift/report-charts/{}/report.yaml'
+          ls -1 test/openshift/report-charts | xargs -I {} sh -c "cat test/openshift/report-charts/{}/report.yaml | grep 'outcome: FAIL' && exit 1 ||:"
+
+      - name: Containers Test
+        if: always()
+        run: |
+          devbox run make -C test/openshift _testContainers
           ls -1 test/openshift/report-containers/quay.io/harikube | xargs -I {} sh -c 'echo "--- Container: {} ---" ; cat test/openshift/report-containers/quay.io/harikube/{}/amd64/results.json'
+          ls -1 test/openshift/report-containers/quay.io/harikube | xargs -I {} sh -c "cat test/openshift/report-containers/quay.io/harikube/{}/amd64/results.json | grep '\"passed\": false' && exit 1 ||:"
 
       - name: RKE2 Cleanup Tests
         if: always()

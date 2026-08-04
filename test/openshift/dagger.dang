@@ -33,7 +33,7 @@ type Openshift {
       let name = image[0] ?? ""
       let tag = image[1] ?? ""
 
-      dir.withDirectory(name, self.preflight.checkContainer(name, tag))
+      dir.withDirectory(name, self.checkContainer(name, tag))
     }
   }
 

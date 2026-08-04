@@ -4,7 +4,10 @@ DAGGER_NO_NAG=1
 export DAGGER_NO_NAG
 
 all: build test
-	
+
+.PHONY: build
+build:
+
 .PHONY: setup-test
 setup-test: cleanup-test
 
@@ -12,8 +15,7 @@ _load:
 
 _deploy:
 
-_test:
-	dagger call check
+_test: _testCharts _testContainers
 
 _testContainers:
 	@rm -rf $(MAKEFILE_DIR)openshift/report-containers
