@@ -129,6 +129,8 @@ jobs:
             kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
             ```
 
+            > If you change namespace, please `--set vcluster.exportKubeConfigserver=https://harikube.<NAMESPACE>:443`
+            
             You can enable network policies. You have to create namespace manually, label the namespace and skip `--create-namespace` flag.
 
             ```bash
