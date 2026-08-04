@@ -43,6 +43,7 @@ jobs:
           subject-path: dist/artifacts/kine-*
 
       - name: Upload binaries to release
+        if: github.repository_owner == 'k3s-io'
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: |
