@@ -1,0 +1,53 @@
+name: RedHat Verification
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/actionlint.yaml"
+  
+jobs:
+  redhat-test:
+    name: RedHat Verification
+    if: contains(github.event.head_commit.message, '+OS')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: 'true'
+
+      - name: RedHat Setup Verification
+        run: devbox run make -C test/redhat build setup-test _load _deploy
+        env:
+          TAG: api
+
+      - name: Helm chart Verification
+        run: |
+          devbox run make -C test/redhat _testCharts
+          ls -1 test/redhat/report-charts | xargs -I {} sh -c 'echo "--- Helm Chart: {} ---" ; cat test/redhat/report-charts/{}/report.yaml'
+          ls -1 test/redhat/report-charts | xargs -I {} sh -c "cat test/redhat/report-charts/{}/report.yaml | grep 'outcome: FAIL' && exit 1 ||:"
+
+      - name: Containers Verification
+        if: always()
+        run: |
+          devbox run make -C test/redhat _testContainers
+          ls -1 test/redhat/report-containers/quay.io/harikube | xargs -I {} sh -c 'echo "--- Container: {} ---" ; cat test/redhat/report-containers/quay.io/harikube/{}/amd64/results.json'
+          ls -1 test/redhat/report-containers/quay.io/harikube | xargs -I {} sh -c "cat test/redhat/report-containers/quay.io/harikube/{}/amd64/results.json | grep '\"passed\": false' && exit 1 ||:"
+
+      - name: RKE2 Cleanup Verification
+        if: always()
+        run: devbox run make -C test/redhat cleanup-test
+
