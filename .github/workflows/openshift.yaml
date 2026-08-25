@@ -36,7 +36,7 @@ jobs:
       - name: OpenShift Setup Tests
         run: devbox run make -C test/openshift deps build setup-test _load _deploy
         env:
-          TAG: api
+          TAG: openshift
           CRC_VERSION: ${{ matrix.crcVersion }}
           OS_PRESET: ${{ matrix.osPreset }}
           OS_VERSION: ${{ matrix.osVersion }}

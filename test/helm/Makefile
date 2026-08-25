@@ -1,3 +1,4 @@
+export HKTPF=-helm
 include ../Makefile
 
 all: build test

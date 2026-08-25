@@ -67,7 +67,7 @@ _test:
 cleanup-test:
 	vcluster disconnect ||:
 	@vagrant destroy -f ||:
-	
+
 _cleanup-test:
 
 ssh:

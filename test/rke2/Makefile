@@ -1,5 +1,6 @@
 include ../Makefile
 
+# Release list: https://github.com/rancher/rke2/releases
 RKE2_VERSION?=v1.36.2+rke2r1
 
 all: build test
@@ -20,7 +21,6 @@ _load:
 _deploy:
 	vagrant ssh -c "sudo systemctl enable harikube.service --now"
 
-# 	Release list: https://github.com/rancher/rke2/releases
 	vagrant ssh -c "sudo sh -c 'curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=$(RKE2_VERSION) sh -'"
 	vagrant ssh -c "sudo systemctl enable rke2-server.service --now"
 
@@ -52,7 +52,7 @@ _test-vcluster:
 cleanup-test:
 	vcluster disconnect ||:
 	@vagrant destroy -f ||:
-	
+
 _cleanup-test:
 
 ssh:

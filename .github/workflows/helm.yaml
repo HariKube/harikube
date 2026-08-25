@@ -15,8 +15,9 @@ on:
 jobs:
   helm-test:
     name: Helm test
-    if: ${{ ! contains(github.event.head_commit.message, '+RKE2') }}
+    if: ${{ !contains(github.event.head_commit.message, '+RKE2') && !contains(github.event.head_commit.message, '+OS') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -28,7 +29,14 @@ jobs:
         with:
           enable-cache: 'true'
 
-      - name: Run tester
-        run: devbox run make -C test/helm build test
+      - name: Helm Tests
+        run: devbox run make -C test/helm build setup-test _load _deploy
         env:
-          TAG: e2e
+          TAG: helm
+
+      - name: Helm Test
+        run: devbox run make -C test/helm test
+
+      - name: Helm Cleanup Tests
+        if: always()
+        run: devbox run make -C test/helm cleanup-test

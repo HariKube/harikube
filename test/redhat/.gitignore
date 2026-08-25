@@ -11,3 +11,6 @@ devenv.local.yaml
 
 docker.json
 report*
+
+*.tar
+*.tgz

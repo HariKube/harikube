@@ -5,7 +5,7 @@ export TAG ?= $(shell git describe --tags --abbrev=0)-snapshot
 
 export REPO ?= quay.io/harikube
 export IMAGE_NAME ?= harikube
-export KIND_CLUSTER ?= harikube-test
+export KIND_CLUSTER ?= harikube-test$(HKTPF)
 export KUBECONFIG ?= $(HOME)/.kube/config
 
 export NAMESPACE = harikube
@@ -14,13 +14,14 @@ all: build test-all
 
 .PHONY: build
 build:
-	$(MAKE) -C $(MAKEFILE_DIR)/.. build package harikube-release
+	$(MAKE) -C $(MAKEFILE_DIR).. build package harikube-release
 
 .PHONY: test-all
 test-all:
 	$(MAKE) -C api test
-	$(MAKE) -C openshift test
 	$(MAKE) -C helm test
+	$(MAKE) -C openshift test
+	$(MAKE) -C redhat test
 	$(MAKE) -C rke2 test
 
 .PHONY: setup-test

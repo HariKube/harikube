@@ -16,6 +16,10 @@ type ChartVerifier {
 
   pub verify(
     """
+    Only web catalog verify will be enabled.
+    """
+    webCatalogOnly: String = null,
+    """
     Version of OpenShift used in the cluster.
     """
     openShiftVersion: String = null,
@@ -30,6 +34,7 @@ type ChartVerifier {
   ): Verify! {
     Verify(
       self,
+      webCatalogOnly: webCatalogOnly,
       openShiftVersion: openShiftVersion,
       enable: enable,
       disable: disable,
@@ -40,6 +45,7 @@ type ChartVerifier {
 type Verify {
   let parent: ChartVerifier!
 
+  let webCatalogOnly: String
   let openShiftVersion: String
   let enable: [String!]!
   let disable: [String!]!
@@ -63,7 +69,6 @@ type Verify {
       "chart-verifier",
       "verify",
       chart,
-      "--web-catalog-only",
       "--chart-set=middleware.networkPolicy.create=true",
       "--chart-set=middleware.networkPolicy.create=true",
       "--chart-set=apiServer.create=true",
@@ -73,7 +78,11 @@ type Verify {
       "--chart-set=controllerManager.create=true",
       "--chart-set=controllerManager.monitoring.create=true",
       "--chart-set=controllerManager.networkPolicy.create=true",
-      ]
+    ]
+
+    if (webCatalogOnly != null) {
+      args += ["--web-catalog-only"]
+    }
 
     if (openShiftVersion != null) {
       args += ["--openshift-version", openShiftVersion]

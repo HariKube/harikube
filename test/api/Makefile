@@ -1,3 +1,4 @@
+export HKTPF=-api
 include ../Makefile
 
 all: build test
@@ -17,8 +18,10 @@ setup-test: cleanup-test
 	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=240s
 
 _load:
+	$(info Nothing to load)
 
 _deploy:
+	$(info Nothing to deploy)
 
 _test:
 	docker run --rm --net=host -i \

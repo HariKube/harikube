@@ -1,3 +1,4 @@
 *.tar
+*.tgz
 .crc_pull_secret
 .crc_cache/

@@ -33,7 +33,7 @@ jobs:
       - name: RKE2 Setup Tests
         run: devbox run make -C test/rke2 deps build setup-test _load _deploy
         env:
-          TAG: api
+          TAG: rke2
           RKE2_VERSION: ${{ matrix.version }}
 
       - name: RKE2 Test Host
