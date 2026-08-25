@@ -9,8 +9,12 @@ ifeq ($(OS_PRESET), "okd")
 endif
 
 PULL_SECRET?=$(shell cat .crc_pull_secret)
+PULL_SECRET_B64=$(shell echo '$(PULL_SECRET)' | base64)
 
 all: build test
+
+asd:
+	echo $(PULL_SECRET_B64)
 
 deps:
 	vagrant plugin install vagrant-libvirt
@@ -25,7 +29,7 @@ _load:
 	vagrant rsync
 
 _deploy:
-	@PULL_SECRET='$(PULL_SECRET)' vagrant ssh -c 'printf "%s\n" "$$PULL_SECRET" > /home/vagrant/.crc_pull_secret'
+	@vagrant ssh -c "echo -n $(PULL_SECRET_B64) | base64 -d > /home/vagrant/.crc_pull_secret"
 
 	vagrant ssh -c "curl -qL https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/$(CRC_VERSION)/crc-linux-amd64.tar.xz | sudo tar -xJ -C /opt"
 
