@@ -63,6 +63,7 @@ type Verify {
       "chart-verifier",
       "verify",
       chart,
+      "--web-catalog-only",
       "--chart-set=middleware.networkPolicy.create=true",
       "--chart-set=middleware.networkPolicy.create=true",
       "--chart-set=apiServer.create=true",

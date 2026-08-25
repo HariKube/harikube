@@ -23,8 +23,8 @@ Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |lv|
     lv.uri = "qemu:///system"
     lv.cpus = 8
-    lv.memory = 5120
-    lv.machine_virtual_size = 20
+    lv.memory = 8192
+    lv.machine_virtual_size = 30
     lv.cpu_mode = "host-passthrough"
     lv.nic_model_type = "virtio"
     lv.driver = "kvm"

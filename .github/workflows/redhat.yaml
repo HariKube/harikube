@@ -15,7 +15,7 @@ on:
 jobs:
   redhat-test:
     name: RedHat Verification
-    if: contains(github.event.head_commit.message, '+OS')
+    if: contains(github.event.head_commit.message, '+RH')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -46,8 +46,3 @@ jobs:
           devbox run make -C test/redhat _testContainers
           ls -1 test/redhat/report-containers/quay.io/harikube | xargs -I {} sh -c 'echo "--- Container: {} ---" ; cat test/redhat/report-containers/quay.io/harikube/{}/amd64/results.json'
           ls -1 test/redhat/report-containers/quay.io/harikube | xargs -I {} sh -c "cat test/redhat/report-containers/quay.io/harikube/{}/amd64/results.json | grep '\"passed\": false' && exit 1 ||:"
-
-      - name: RKE2 Cleanup Verification
-        if: always()
-        run: devbox run make -C test/redhat cleanup-test
-

@@ -6,7 +6,7 @@ _load:
 	kind load docker-image -n $(KIND_CLUSTER) $(REPO)/$(IMAGE_NAME):$(TAG)
 
 _deploy:
-	kubectl create namespace $(NAMESPACE)
+	kubectl create namespace $(NAMESPACE) ||:
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-middleware=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-apiserver=enabled --overwrite
 	kubectl label namespace $(NAMESPACE) harikube.info/$(NAMESPACE)-controllermanager=enabled --overwrite
@@ -24,7 +24,7 @@ _deploy:
 		--set controllerManager.create=true \
 		--set controllerManager.monitoring.create=true \
 		--set controllerManager.networkPolicy.create=true
-	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=5m
+	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=8m
 
 _test:
 	vcluster connect harikube

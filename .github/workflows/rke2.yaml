@@ -18,6 +18,9 @@ jobs:
     if: contains(github.event.head_commit.message, '+RKE2')
     runs-on: self-hosted
     timeout-minutes: 90
+    strategy:
+      matrix:
+        version: ['v1.36.2+rke2r1']
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -28,9 +31,10 @@ jobs:
         run: docker system prune -af
 
       - name: RKE2 Setup Tests
-        run: devbox run make -C test/rke2 build setup-test _load _deploy
+        run: devbox run make -C test/rke2 deps build setup-test _load _deploy
         env:
           TAG: api
+          RKE2_VERSION: ${{ matrix.version }}
 
       - name: RKE2 Test Host
         run: devbox run make -C test/rke2 _test-host

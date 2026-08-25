@@ -4,6 +4,8 @@ metadata:
   name: infra
 spec:
   namespace: kube-system
+  timeouts:
+    assert: 5m
   steps:
   - name: Validate CoreDNS
     try:

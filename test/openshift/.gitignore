@@ -1,0 +1,3 @@
+*.tar
+.crc_pull_secret
+.crc_cache/

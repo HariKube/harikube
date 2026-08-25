@@ -48,7 +48,7 @@ type Openshift {
   }
 
   let checkChart(ws: Workspace!, name: String!): File! {
-    self.chartVerifier.verify(disable: ["chart-testing"]).directory(
+    self.chartVerifier.verify(openShiftVersion: "4.11.3", disable: ["chart-testing"]).directory(
       name,
       ws.directory("/harikube-helm-charts/" + name, gitignore: true),
     )
