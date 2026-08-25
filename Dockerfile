@@ -60,10 +60,10 @@ LABEL description="HariKube is a Kubernetes hyper-scaler that turns your cluster
 LABEL maintainer="richard.kovacs@harikube.com"
 COPY LICENSE /licenses/LICENSE
 COPY --from=build /go/src/github.com/k3s-io/kine/bin/kine${NOCGO} /bin/kine
-RUN mkdir /db && chown nobody /db
+RUN mkdir /db && chown 65534 /db
 VOLUME /db
 EXPOSE 2379/tcp
-USER nobody
+USER 65534
 ENTRYPOINT ["/bin/kine"]
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
@@ -112,8 +112,8 @@ RUN if [ "${TARGETARCH}" == "arm/v7" ]; then \
     fi
 COPY LICENSE /licenses/LICENSE
 COPY --from=multi-arch-build /go/src/github.com/k3s-io/kine/bin/kine-${ARCH}${NOCGO} /bin/kine
-RUN mkdir /db && chown nobody /db
+RUN mkdir /db && chown 65534 /db
 VOLUME /db
 EXPOSE 2379/tcp
-USER nobody
+USER 65534
 ENTRYPOINT ["/bin/kine"]

@@ -33,7 +33,7 @@ _deploy:
 
 	kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
 	kubectl wait -n local-path-storage --for=jsonpath='{.status.readyReplicas}'=1 deployment/local-path-provisioner --timeout=2m
-	kubectl apply -f storageclass.yaml
+	kubectl apply -f storageclass.yaml --validate=false
 
 	vagrant ssh -c "sudo /var/lib/rancher/rke2/bin/ctr --address /run/k3s/containerd/containerd.sock --namespace k8s.io images import /vagrant/$(TAG).tar"
 	$(MAKE) -C ../helm _deploy
@@ -45,7 +45,7 @@ _test-host:
 
 _test-vcluster:
 	vcluster connect harikube
-	$(MAKE) -C ../api _test
+	$(MAKE) -C ../helm _test
 	vcluster disconnect ||:
 
 .PHONY: cleanup-test

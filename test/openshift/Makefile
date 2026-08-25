@@ -25,7 +25,7 @@ _load:
 	vagrant rsync
 
 _deploy:
-	@vagrant ssh -c "echo '$(PULL_SECRET)' > /home/vagrant/.crc_pull_secret"
+	@PULL_SECRET='$(PULL_SECRET)' vagrant ssh -c 'printf "%s\n" "$$PULL_SECRET" > /home/vagrant/.crc_pull_secret'
 
 	vagrant ssh -c "curl -qL https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/$(CRC_VERSION)/crc-linux-amd64.tar.xz | sudo tar -xJ -C /opt"
 
@@ -50,7 +50,7 @@ _deploy:
 	$(MAKE) _setup-test
 
 	kubectl patch storageclass topolvm-provisioner -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "false"}}}'
-	kubectl apply -f storageclass.yaml
+	kubectl apply -f storageclass.yaml --validate=false
 
 
 	vagrant ssh -c "scp -i ~/.crc/machines/crc/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P 2222 /vagrant/$(TAG).tar core@127.0.0.1:/home/core"
