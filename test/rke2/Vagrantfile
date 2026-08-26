@@ -24,7 +24,7 @@ Vagrant.configure("2") do |config|
     lv.uri = "qemu:///system"
     lv.cpus = 8
     lv.memory = 8192
-    lv.machine_virtual_size = 35
+    lv.machine_virtual_size = 40
     lv.cpu_mode = "host-passthrough"
     lv.nic_model_type = "virtio"
     lv.driver = "kvm"
