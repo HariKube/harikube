@@ -30,8 +30,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cleanup system
-        run: docker system prune -af
+      - name: Create pull secret
+        env:
+          PULL_SECRET: ${{ secrets.PULL_SECRET }}
+        run: |
+          printf '%s' "$PULL_SECRET" > test/openshift/.crc_pull_secret
 
       - name: OpenShift Setup Tests
         run: devbox run make -C test/openshift deps build setup-test _load _deploy
@@ -40,7 +43,6 @@ jobs:
           CRC_VERSION: ${{ matrix.crcVersion }}
           OS_PRESET: ${{ matrix.osPreset }}
           OS_VERSION: ${{ matrix.osVersion }}
-          PULL_SECRET: ${{ secrets.PULL_SECRET }}
 
       - name: OpenShift Test
         run: devbox run make -C test/openshift test

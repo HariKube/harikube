@@ -27,9 +27,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Cleanup system
-        run: docker system prune -af
-
       - name: RKE2 Setup Tests
         run: devbox run make -C test/rke2 deps build setup-test _load _deploy
         env:
