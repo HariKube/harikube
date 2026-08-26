@@ -1,6 +1,12 @@
 name: Release
 on:
-  workflow_dispatch: {}
+  push:
+    branches:
+    - release-v**
+    - rc-v**
+    - beta-v**
+    - alpha-v**
+    - dev-v**
 
 jobs:
   release:
@@ -30,17 +36,14 @@ jobs:
         run: make multi-arch-build CGO_ENABLED=0
 
       - name: Compute checksum for each binary
-        if: github.repository_owner == 'k3s-io'
         run: |
           arch=("amd64" "arm64" "arm" "riscv64")
           cd dist/artifacts
           for a in "${arch[@]}"; do
-            sha256sum kine-"${a}" > sha256sum-"${a}".txt
             sha256sum kine-"${a}-nocgo" > sha256sum-"${a}-nocgo".txt
           done
           
       - name: Attest binaries
-        if: github.repository_owner == 'k3s-io'
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4
         with:
           subject-path: dist/artifacts/kine-*
@@ -75,15 +78,15 @@ jobs:
 
       # For forks, setup DockerHub login with GHA secrets
       - name: Login to DockerHub with GHA Secrets
-        if: github.repository_owner == 'k3s-io'
+        if: github.repository_owner != 'k3s-io'
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
-          username: ${{ vars.DOCKER_USERNAME }}
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       
       - name: Login to GitHub Container Registry
-        if: github.repository_owner != 'k3s-io'
+        if: github.repository_owner == 'k3s-io'
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: ghcr.io
@@ -95,7 +98,7 @@ jobs:
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         id: build
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           context: .
           target: multi-arch-package
           push: true

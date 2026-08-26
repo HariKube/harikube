@@ -1,7 +1,13 @@
 name: repo release
 
 on:
-  workflow_dispatch: {}
+  push:
+    branches:
+    - release-v**
+    - rc-v**
+    - beta-v**
+    - alpha-v**
+    - dev-v**
 
 permissions:
   contents: write
@@ -121,7 +127,7 @@ jobs:
             - Cert-manager
 
             ```bash
-            helm install harikube oci://${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/harikube \
+            helm install harikube oci://${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_ORG }}/harikube \
               --version ${{ steps.extract_version.outputs.version }} \
               --dependency-update \
               --create-namespace \
