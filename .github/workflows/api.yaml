@@ -11,7 +11,10 @@ on:
     paths-ignore:
       - "**.md"
       - ".github/workflows/actionlint.yaml"
-  
+
+env:
+  TAG: api
+
 jobs:
   api-test:
     name: API Test
@@ -31,8 +34,6 @@ jobs:
 
       - name: API Tests
         run: devbox run make -C test/api build setup-test _load _deploy
-        env:
-          TAG: api
 
       - name: API Test
         run: devbox run make -C test/api test

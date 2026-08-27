@@ -1,12 +1,17 @@
 MAKEFLAGS += --no-print-directory
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-export TAG ?= $(shell git describe --tags --abbrev=0)-snapshot
+TAG ?= $(shell git describe --tags --abbrev=0)-snapshot
+export TAG
 
-export REPO ?= quay.io/harikube
-export IMAGE_NAME ?= harikube
-export KIND_CLUSTER ?= harikube-test$(HKTPF)
-export KUBECONFIG ?= $(HOME)/.kube/config
+REPO ?= quay.io/harikube
+export REPO
+IMAGE_NAME ?= harikube
+export IMAGE_NAME
+KIND_CLUSTER ?= harikube-test$(HKTPF)
+export KIND_CLUSTER
+KUBECONFIG ?= $(HOME)/.kube/config
+export KUBECONFIG
 
 export NAMESPACE = harikube
 

@@ -11,7 +11,10 @@ on:
     paths-ignore:
       - "**.md"
       - ".github/workflows/actionlint.yaml"
-  
+
+env:
+  TAG: redhat
+
 jobs:
   redhat-test:
     name: RedHat Verification
@@ -31,8 +34,6 @@ jobs:
 
       - name: RedHat Setup Verification
         run: devbox run make -C test/redhat build setup-test _load _deploy
-        env:
-          TAG: redhat
 
       - name: Helm chart Verification
         run: |
