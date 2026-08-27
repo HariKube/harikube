@@ -1,6 +1,6 @@
 include ../Makefile
 
-CRC_VERSION?=2.62.0
+CRC_VERSION?=2.63.0
 OS_VERSION?=4.22.0
 # openshift 4.22.1 okd 4.21.0 microshift 4.22.0
 OS_PRESET?=microshift
@@ -27,18 +27,20 @@ _load:
 _deploy:
 	@vagrant ssh -c "echo -n '$(PULL_SECRET)' > /home/vagrant/.crc_pull_secret"
 
-	vagrant ssh -c "curl -qL https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/$(CRC_VERSION)/crc-linux-amd64.tar.xz | sudo tar -xJ -C /opt"
+# 	vagrant ssh -c "curl -qL https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/$(CRC_VERSION)/crc-linux-amd64.tar.xz | sudo tar -xJ -C /opt"
+	vagrant ssh -c "sudo mkdir -p /opt/crc-linux-$(CRC_VERSION)-amd64 && sudo curl -qL 'https://github.com/mhmxs/crc/releases/download/v$(CRC_VERSION)%2Bhk.0/crc' -o /opt/crc-linux-$(CRC_VERSION)-amd64/crc && sudo chmod +x /opt/crc-linux-$(CRC_VERSION)-amd64/crc"
 
 	vagrant ssh -c "([ -f /vagrant/.crc_cache/crc_$(OS_PRESET)_libvirt_$(OS_VERSION)$(OS_SUFIX)_amd64.crcbundle ] && crc config set bundle /vagrant/.crc_cache/crc_$(OS_PRESET)_libvirt_$(OS_VERSION)$(OS_SUFIX)_amd64.crcbundle) ||:"
 	vagrant ssh -c "crc config set consent-telemetry no"
+	vagrant ssh -c "crc config set disable-update-check true"
 	vagrant ssh -c "crc config set developer-password developer"
 	vagrant ssh -c "crc config set kubeadmin-password kubeadmin"
 	vagrant ssh -c "crc config set preset $(OS_PRESET)"
 	vagrant ssh -c "crc config set cpus 8"
-	vagrant ssh -c "crc config set memory 7680"
+	vagrant ssh -c "crc config set memory 5632"
 	vagrant ssh -c "crc setup --log-level=debug"
 
-	vagrant ssh -c "crc start --disable-update-check --pull-secret-file=/vagrant/.crc_pull_secret --log-level=debug"
+	vagrant ssh -c "crc start --pull-secret-file=/vagrant/.crc_pull_secret --log-level=debug"
 
 	vagrant ssh -c "oc create serviceaccount remote-admin -n kube-system"
 	vagrant ssh -c "oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:kube-system:remote-admin"

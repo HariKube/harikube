@@ -11,7 +11,10 @@ on:
     paths-ignore:
       - "**.md"
       - ".github/workflows/actionlint.yaml"
-  
+
+env:
+  TAG: openshift
+
 jobs:
   openshift-test:
     name: OpenShift Test
@@ -21,7 +24,7 @@ jobs:
     strategy:
       matrix:
         include:
-        - crcVersion: 2.62.0
+        - crcVersion: 2.63.0
           osPreset: microshift
           osVersion: 4.22.0
     steps:
@@ -29,6 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          clean: false
 
       - name: Create pull secret
         env:
@@ -39,10 +43,12 @@ jobs:
       - name: OpenShift Setup Tests
         run: devbox run make -C test/openshift deps build setup-test _load _deploy
         env:
-          TAG: openshift
           CRC_VERSION: ${{ matrix.crcVersion }}
           OS_PRESET: ${{ matrix.osPreset }}
           OS_VERSION: ${{ matrix.osVersion }}
+
+      - name: OpenShift Cache Bundle
+        run: devbox run make -C test/openshift cache-bundle
 
       - name: OpenShift Test
         run: devbox run make -C test/openshift test

@@ -25,7 +25,7 @@ _deploy:
 		--set controllerManager.create=true \
 		--set controllerManager.monitoring.create=true \
 		--set controllerManager.networkPolicy.create=true
-	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=8m
+	kubectl wait -n $(NAMESPACE) --for=jsonpath='{.status.readyReplicas}'=1 statefulset/harikube --timeout=15m
 
 _test:
 	vcluster connect harikube

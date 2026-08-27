@@ -11,7 +11,10 @@ on:
 
   pull_request:
     branches: [main]
-  
+
+env:
+  TAG: helm
+
 jobs:
   helm-test:
     name: Helm test
@@ -31,8 +34,6 @@ jobs:
 
       - name: Helm Tests
         run: devbox run make -C test/helm build setup-test _load _deploy
-        env:
-          TAG: helm
 
       - name: Helm Test
         run: devbox run make -C test/helm test
