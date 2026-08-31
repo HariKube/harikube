@@ -104,6 +104,8 @@ type Generic struct {
 	TranslateStartKeyFunc   SubstituteFunc
 	ErrCode                 ErrCode
 	FillRetryDuration       time.Duration
+
+	KafkaProducer *KafkaProducer
 }
 
 func (d *Generic) Migrate(ctx context.Context) {
@@ -198,7 +200,7 @@ func OpenDB(ctx context.Context, wg *sync.WaitGroup, driverName string, connecto
 		metricsRegisterer.MustRegister(collectors.NewDBStatsCollector(db, "kine"))
 	}
 
-	return &Generic{
+	generic := &Generic{
 		InsertLabelSQL: query.New(`INSERT INTO kine_labels(kine_id, kine_name, name, value)
 			values(?, ?, ?, ?)`, paramCharacter, numbered, "InsertLabel"),
 		InsertFieldsSQL: query.New(`INSERT INTO kine_fields(kine_id, kine_name, value)
@@ -303,7 +305,12 @@ func OpenDB(ctx context.Context, wg *sync.WaitGroup, driverName string, connecto
 			INSERT INTO kine(id, name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
 			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			paramCharacter, numbered, "Fill"),
-	}, err
+	}
+
+	StarKafkaConsumer(ctx, wg, generic)
+	generic.KafkaProducer = NewKafkaProducer()
+
+	return generic, err
 }
 
 func (d *Generic) query(ctx context.Context, sql *query.Named, args ...any) (result *sql.Rows, err error) {
@@ -605,6 +612,15 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 			}
 		}()
 	}
+
+	defer func() {
+		if err == nil {
+			if err := d.KafkaProducer.SendMessage(ctx, key, value); err != nil {
+				// TODO introduce WASM to make custom error handling
+				logrus.Errorf("Failed to send message: %v", err)
+			}
+		}
+	}()
 
 	var g generic = d
 	obj, uid, labels, fieldsSet, owners, finalizers, dErr := decodeObject(key, value)

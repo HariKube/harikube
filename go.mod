@@ -29,6 +29,7 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/ohler55/ojg v1.28.2
 	github.com/prometheus/client_golang v1.23.2
+	github.com/segmentio/kafka-go v0.4.51
 	github.com/shengdoushi/base58 v1.0.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/t4db/t4 v1.0.3
@@ -112,6 +113,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
