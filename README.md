@@ -23,6 +23,8 @@ An order isn't scattered across five isolated databases. It exists as a single v
 
 > ✅ HariKube isn't a Kubernetes-inspired API or a custom control plane that happens to look like Kubernetes. It is designed to preserve Kubernetes API semantics and has passed the Kubernetes conformance test suite. Test it today.
 
+<img width="1057" height="382" alt="tradition-vs-harikube" src="https://github.com/user-attachments/assets/d057d4bf-d327-4983-bff5-7123e463ee13" />
+
 ## Why this fork exists?
 
 Both ETCD and Kine are limited by Kubernetes API server itself and how it filters data. API server manages an O(n) cache in memory, and filters data at client side, because both ETCD and Kine are lacking on data filtering. The only real option is vertical scaling of all (API, ETCD, Kine). An average cluster dies at 50-100k records. Of course, you can add more ram, more iops, but these are just postponing the problem.
@@ -94,6 +96,10 @@ Open-Source edition is designed to interface with a single backend database inst
 ## Installation: The vCluster Method
 
 Please read [release notes](https://github.com/HariKube/harikube/releases) for more details how to install HariKube.
+
+## Architecture
+
+<img width="2010" height="1673" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/3dfb2da4-6f6d-4e8b-8a0f-ec4fd996a59a" />
 
 ## Important Requirement
 
