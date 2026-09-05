@@ -12,6 +12,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency: 
+  group: ${{ github.ref_name }}-helm
+  cancel-in-progress: true
+
 env:
   TAG: helm
 

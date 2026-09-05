@@ -12,6 +12,10 @@ on:
       - "**.md"
       - ".github/workflows/actionlint.yaml"
 
+concurrency: 
+  group: ${{ github.ref_name }}-rke2
+  cancel-in-progress: true
+
 env:
   TAG: rke2
 

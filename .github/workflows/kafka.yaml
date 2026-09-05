@@ -12,6 +12,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency: 
+  group: ${{ github.ref_name }}-kafka
+  cancel-in-progress: true
+
 env:
   TAG: kafka
 
@@ -19,7 +23,7 @@ jobs:
   kafka-test:
     name: Kafka test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
