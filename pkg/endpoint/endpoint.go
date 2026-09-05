@@ -143,7 +143,7 @@ func Listen(ctx context.Context, config Config) (etcd ETCDConfig, rerr error) {
 		}
 	}
 	if config, ok := os.LookupEnv("KAFKA_ENGRESS"); ok {
-		kafkaProducer, err := streams.NewKafkaProducer(ctx, config)
+		kafkaProducer, err := streams.NewKafkaProducer(ctx, config, os.Getenv("KAFKA_ENGRESS_DLQ"))
 		if err != nil {
 			return ETCDConfig{}, fmt.Errorf("creating Kafka producer: %w", err)
 		}

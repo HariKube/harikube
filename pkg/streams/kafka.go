@@ -102,7 +102,7 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 
 	var dlqWriter *KafkaProducer
 	if dlqConfigEnc != "" {
-		dlqWriter, err = NewKafkaProducer(ctx, dlqConfigEnc)
+		dlqWriter, err = NewKafkaProducer(ctx, dlqConfigEnc, "")
 		if err != nil {
 			return err
 		}
@@ -322,12 +322,13 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 }
 
 type KafkaProducer struct {
-	name   string
-	ctx    context.Context
-	writer *kafka.Writer
+	name      string
+	ctx       context.Context
+	writer    *kafka.Writer
+	dlqWriter *KafkaProducer
 }
 
-func NewKafkaProducer(ctx context.Context, configEnc string) (*KafkaProducer, error) {
+func NewKafkaProducer(ctx context.Context, configEnc string, dlqConfigEnc string) (*KafkaProducer, error) {
 	configBytes, err := base64.StdEncoding.DecodeString(configEnc)
 	if err != nil {
 		return nil, err
@@ -338,7 +339,7 @@ func NewKafkaProducer(ctx context.Context, configEnc string) (*KafkaProducer, er
 		return nil, err
 	}
 
-	return &KafkaProducer{
+	producer := KafkaProducer{
 		name: fmt.Sprintf("%s", config.Addr),
 		ctx:  ctx,
 		writer: &kafka.Writer{
@@ -358,7 +359,16 @@ func NewKafkaProducer(ctx context.Context, configEnc string) (*KafkaProducer, er
 			Compression:            compress.Compression(config.Compression),
 			AllowAutoTopicCreation: config.AllowAutoTopicCreation,
 		},
-	}, nil
+	}
+
+	if dlqConfigEnc != "" {
+		producer.dlqWriter, err = NewKafkaProducer(ctx, dlqConfigEnc, "")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &producer, nil
 }
 
 func (p *KafkaProducer) SendMessage(key string, value []byte, errorCallback func(error), headers map[string][]byte) {
@@ -386,10 +396,19 @@ func (p *KafkaProducer) SendMessage(key string, value []byte, errorCallback func
 
 		if errorCallback != nil {
 			errorCallback(err)
+		} else if p.dlqWriter != nil {
+			p.dlqWriter.SendMessage(key, value,
+				func(dlqErr error) {
+					logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", p.name, key, dlqErr)
+				},
+				map[string][]byte{
+					"x-error-reason": []byte(err.Error()),
+				},
+			)
 		}
 	}
 }
 
 func (p *KafkaProducer) Close() error {
-	return p.writer.Close()
+	return errors.Join(p.writer.Close(), p.dlqWriter.Close())
 }

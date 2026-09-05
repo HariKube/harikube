@@ -18,6 +18,7 @@ setup-test: cleanup-test
 		-e KAFKA_INGRESS="$$(base64 -w0 kafka-ingress.json)" \
 		-e KAFKA_INGRESS_DLQ="$$(base64 -w0 kafka-ingress-dlq.json)" \
 		-e KAFKA_ENGRESS="$$(base64 -w0 kafka-engress.json)" \
+		-e KAFKA_ENGRESS_DLQ="$$(base64 -w0 kafka-ingress-dlq.json)" \
 		$(REPO)/$(IMAGE_NAME):$(TAG) \
 		--listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal=WAL&cache=shared'
 

@@ -13,7 +13,7 @@ import (
 	"github.com/k3s-io/kine/pkg/broadcaster"
 	"github.com/k3s-io/kine/pkg/metrics"
 	"github.com/k3s-io/kine/pkg/server"
-	"github.com/k3s-io/kine/pkg/streams/drivers"
+	streams "github.com/k3s-io/kine/pkg/streams/drivers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -612,7 +612,7 @@ func (s *SQLLog) poll(result chan server.Events, pollStart int64) {
 			pollRevision = rev
 			result <- sequential
 
-			go drivers.SendMessage("all", sequential)
+			streams.SendMessage("all", sequential)
 		}
 	}
 }
