@@ -36,16 +36,16 @@ _deploy:
 	kubectl apply -f storageclass.yaml --validate=false
 
 	vagrant ssh -c "sudo /var/lib/rancher/rke2/bin/ctr --address /run/k3s/containerd/containerd.sock --namespace k8s.io images import /vagrant/$(TAG).tar"
-	$(MAKE) -C ../helm _deploy
+	$(MAKE) -BC ../helm _deploy
 
 _test: _test-host _test-vcluster
 
 _test-host:
-	$(MAKE) -C ../api _test
+	$(MAKE) -BC ../suites e2e
 
 _test-vcluster:
 	vcluster connect harikube
-	$(MAKE) -C ../helm _test
+	$(MAKE) -BC ../suites simple
 	vcluster disconnect ||:
 
 .PHONY: cleanup-test

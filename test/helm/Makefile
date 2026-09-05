@@ -29,7 +29,8 @@ _deploy:
 
 _test:
 	vcluster connect harikube
-	chainsaw test --test-dir .
+	$(MAKE) -BC ../suites vcluster
+	$(MAKE) -BC ../suites simple
 	vcluster disconnect ||:
 
 _cleanup-test:

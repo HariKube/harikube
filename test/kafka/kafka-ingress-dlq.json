@@ -1,0 +1,6 @@
+{
+    "brokers": ["172.17.0.1:9092"],
+    "start_offset": -2,
+    "topic": "dlq",
+    "group_id": "stream-reader-group"
+}

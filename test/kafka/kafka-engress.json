@@ -1,0 +1,6 @@
+{
+    "addr": "172.17.0.1:9092",
+    "topic": "outgoing",
+    "batch_timeout": 10000000,
+    "required_acks": -1
+}

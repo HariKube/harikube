@@ -216,6 +216,33 @@ func GetUIDByObject(obj runtime.Object) (uid types.UID) {
 	return uid
 }
 
+func GetResourceVersionByObject(obj runtime.Object) (rv string) {
+	switch obj := obj.(type) {
+	case *corev1.Pod:
+		rv = obj.ResourceVersion
+	case *corev1.Event:
+		rv = obj.ResourceVersion
+	case *corev1.Secret:
+		rv = obj.ResourceVersion
+	case *corev1.Namespace:
+		rv = obj.ResourceVersion
+	case *appsv1.ReplicaSet:
+		rv = obj.ResourceVersion
+	case *corev1.ReplicationController:
+		rv = obj.ResourceVersion
+	case *batchv1.Job:
+		rv = obj.ResourceVersion
+	case *corev1.Node:
+		rv = obj.ResourceVersion
+	case *certv1.CertificateSigningRequest:
+		rv = obj.ResourceVersion
+	case *metav1.PartialObjectMetadata:
+		rv = obj.ResourceVersion
+	}
+
+	return rv
+}
+
 func GetFinalizersByObject(obj runtime.Object) (finalizers []string) {
 	switch obj := obj.(type) {
 	case *corev1.Pod:

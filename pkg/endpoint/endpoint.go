@@ -16,6 +16,8 @@ import (
 	"github.com/k3s-io/kine/pkg/drivers/generic"
 	"github.com/k3s-io/kine/pkg/metrics"
 	"github.com/k3s-io/kine/pkg/server"
+	"github.com/k3s-io/kine/pkg/streams"
+	streamdrivers "github.com/k3s-io/kine/pkg/streams/drivers"
 	"github.com/k3s-io/kine/pkg/tls"
 	"github.com/k3s-io/kine/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -133,6 +135,19 @@ func Listen(ctx context.Context, config Config) (etcd ETCDConfig, rerr error) {
 
 	if err := backend.Start(bctx); err != nil {
 		return ETCDConfig{}, fmt.Errorf("starting kine backend: %w", err)
+	}
+
+	if config, ok := os.LookupEnv("KAFKA_INGRESS"); ok {
+		if err := streams.StartKafkaConsumer(ctx, wg, backend, config, os.Getenv("KAFKA_INGRESS_DLQ")); err != nil {
+			return ETCDConfig{}, fmt.Errorf("creating Kafka consumer: %w", err)
+		}
+	}
+	if config, ok := os.LookupEnv("KAFKA_ENGRESS"); ok {
+		kafkaProducer, err := streams.NewKafkaProducer(ctx, config)
+		if err != nil {
+			return ETCDConfig{}, fmt.Errorf("creating Kafka producer: %w", err)
+		}
+		streamdrivers.RegisterProducer("all", kafkaProducer)
 	}
 
 	// set up GRPC server and register services

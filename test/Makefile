@@ -19,15 +19,15 @@ all: build test-all
 
 .PHONY: build
 build:
-	$(MAKE) -C $(MAKEFILE_DIR).. build package harikube-release
+	$(MAKE) -BC $(MAKEFILE_DIR).. build package harikube-release
 
 .PHONY: test-all
 test-all:
-	$(MAKE) -C api test
-	$(MAKE) -C helm test
-	$(MAKE) -C openshift test
-	$(MAKE) -C redhat test
-	$(MAKE) -C rke2 test
+	$(MAKE) -BC api test
+	$(MAKE) -BC helm test
+	$(MAKE) -BC openshift test
+	$(MAKE) -BC redhat test
+	$(MAKE) -BC rke2 test
 
 .PHONY: setup-test
 setup-test: cleanup-test

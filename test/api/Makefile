@@ -24,12 +24,7 @@ _deploy:
 	$(info Nothing to deploy)
 
 _test:
-	docker run --rm --net=host -i \
-		-v $(KUBECONFIG):$(KUBECONFIG) \
-		-e KUBECONFIG=$(KUBECONFIG) \
-		--entrypoint sh \
-		registry.k8s.io/conformance:v1.36.2 \
-			-c "e2e.test --ginkgo.seed=1 --ginkgo.focus='api-machinery' --ginkgo.skip='StorageVersionAPI|Slow|Flaky|Alpha|OffByDefault' --ginkgo.flake-attempts=3 --ginkgo.timeout=1h -e2e-verify-service-account=false"
+	$(MAKE) -BC ../suites e2e
 
 _cleanup-test:
 	@docker rm -f harikube_middleware ||:

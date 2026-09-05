@@ -1,0 +1,42 @@
+name: Kafka E2E
+
+on:
+  push:
+    branches-ignore:
+    - release-v**
+    - rc-v**
+    - beta-v**
+    - alpha-v**
+    - dev-v**
+
+  pull_request:
+    branches: [main]
+
+env:
+  TAG: kafka
+
+jobs:
+  kafka-test:
+    name: Kafka test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: 'true'
+
+      - name: Kafka Tests
+        run: devbox run make -C test/kafka build setup-test _load _deploy
+
+      - name: Kafka Test
+        run: devbox run make -C test/kafka test
+
+      - name: Kafka Cleanup Tests
+        if: always()
+        run: devbox run make -C test/kafka cleanup-test

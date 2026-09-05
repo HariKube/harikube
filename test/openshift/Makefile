@@ -58,11 +58,11 @@ _deploy:
 	vagrant ssh -c "scp -i ~/.crc/machines/crc/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P 2222 /vagrant/$(TAG).tar core@127.0.0.1:/home/core"
 	vagrant ssh -c "ssh -i ~/.crc/machines/crc/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 core@127.0.0.1 sudo podman load --input /home/core/$(TAG).tar"
 		
-	$(MAKE) -C ../helm _deploy
+	$(MAKE) -BC ../helm _deploy
 
 _test:
 	vcluster connect harikube
-	$(MAKE) -C ../helm _test
+	$(MAKE) -BC ../suites simple
 	vcluster disconnect ||:
 
 .PHONY: cleanup-test

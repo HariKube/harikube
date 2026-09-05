@@ -19,6 +19,7 @@ require (
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/golang/protobuf v1.5.4
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/json-iterator/go v1.1.12
@@ -29,6 +30,7 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/ohler55/ojg v1.28.5
 	github.com/prometheus/client_golang v1.24.1
+	github.com/segmentio/kafka-go v0.4.51
 	github.com/shengdoushi/base58 v1.0.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/t4db/t4 v1.0.5
@@ -83,7 +85,6 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.0 // indirect
@@ -112,6 +113,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
