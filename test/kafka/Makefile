@@ -33,13 +33,13 @@ _deploy:
 _test:
 	$(MAKE) -BC ../suites simple
 
-	docker exec -it -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic outgoing --bootstrap-server broker:29092 --max-messages 5 --timeout-ms 1000
+	docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic outgoing --bootstrap-server broker:29092 --max-messages 5 --timeout-ms 1000
 
 	cat shirt-example.msg | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
 	kubectl wait --for=create shirts/coming-on-kafka-stream --timeout=1m
 
 	cat shirt-example.msg | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
-	docker exec -it -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic dlq --bootstrap-server broker:29092 --max-messages 1 --timeout-ms 100000
+	docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic dlq --bootstrap-server broker:29092 --max-messages 1 --timeout-ms 100000
 
 	kubectl delete shirts coming-on-kafka-stream
 
