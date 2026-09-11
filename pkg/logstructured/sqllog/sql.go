@@ -442,9 +442,7 @@ func filter(events server.Events, key, end string, labelSelector, fieldSelector 
 	filteredEvents := make(server.Events, 0, len(events))
 	for _, event := range events {
 		if event.InRange(key, end) {
-			if filterEventBySelectors(event.KV, labelSelector, fieldSelector) {
-				filteredEvents = append(filteredEvents, event)
-			} else if event.PrevKV != nil && filterEventBySelectors(event.PrevKV, labelSelector, fieldSelector) {
+			if filterEventBySelectors(event.KV, labelSelector, fieldSelector) || event.PrevKV != nil && filterEventBySelectors(event.PrevKV, labelSelector, fieldSelector) {
 				filteredEvents = append(filteredEvents, event)
 			}
 		}
@@ -769,4 +767,8 @@ func (s *SQLLog) WaitForSyncTo(revision int64) {
 		s.polled.Wait()
 	}
 	s.polled.L.Unlock()
+}
+
+func (s *SQLLog) Transaction(ctx context.Context) (server.Transaction, error) {
+	return s.d.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 }

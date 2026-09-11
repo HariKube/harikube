@@ -126,3 +126,7 @@ func (b *BackendLogger) Compact(ctx context.Context, revision int64) (int64, err
 func (b *BackendLogger) WaitForSyncTo(revision int64) {
 	b.backend.WaitForSyncTo(revision)
 }
+
+func (b *BackendLogger) Transaction(ctx context.Context) (server.Transaction, error) {
+	return b.backend.Transaction(ctx)
+}

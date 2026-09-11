@@ -266,6 +266,10 @@ func (b *backend) WaitForSyncTo(revision int64) {
 	_ = b.node.WaitForRevision(context.Background(), revision)
 }
 
+func (b *backend) Transaction(_ context.Context) (kserver.Transaction, error) {
+	return nil, kserver.ErrNotSupported
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func toServerKV(kv *t4.KeyValue, keysOnly bool) *kserver.KeyValue {

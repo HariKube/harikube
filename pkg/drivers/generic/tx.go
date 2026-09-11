@@ -36,23 +36,38 @@ type generic interface {
 }
 
 type Tx struct {
-	x *sql.Tx
-	d *Generic
+	x               *sql.Tx
+	d               *Generic
+	joinTransaction bool
 }
 
 func (d *Generic) BeginTx(ctx context.Context, opts *sql.TxOptions) (server.Transaction, error) {
+	if cx := ctx.Value(server.TransactionKey); cx != nil {
+		x, ok := cx.(server.Transaction)
+		if !ok {
+			logrus.Fatalf("HARIKUBE_TRANSACTION is not server.Transaction")
+		}
+
+		return x, nil
+	}
+
 	logrus.Tracef("TX BEGIN")
 	x, err := d.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 	return &Tx{
-		x: x,
-		d: d,
+		x:               x,
+		d:               d,
+		joinTransaction: false,
 	}, nil
 }
 
 func (t *Tx) Commit() error {
+	if t.joinTransaction {
+		return nil
+	}
+
 	logrus.Tracef("TX COMMIT")
 	return t.x.Commit()
 }
@@ -64,6 +79,10 @@ func (t *Tx) MustCommit() {
 }
 
 func (t *Tx) Rollback() error {
+	if t.joinTransaction {
+		return nil
+	}
+
 	logrus.Tracef("TX ROLLBACK")
 	return t.x.Rollback()
 }

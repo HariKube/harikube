@@ -570,6 +570,10 @@ func (b *Backend) WaitForSyncTo(revision int64) {
 	// no-op
 }
 
+func (b *Backend) Transaction(_ context.Context) (server.Transaction, error) {
+	return nil, server.ErrNotSupported
+}
+
 // compactor runs periodic automatic compaction in the background.
 // This advances the compact revision point,
 // causing queries for old revisions to return ErrCompacted.

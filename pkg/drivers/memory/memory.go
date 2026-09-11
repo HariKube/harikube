@@ -93,6 +93,10 @@ func (m *Memory) DbSize(ctx context.Context) (int64, error) {
 
 func (m *Memory) WaitForSyncTo(revision int64) {}
 
+func (m *Memory) Transaction(_ context.Context) (server.Transaction, error) {
+	return nil, server.ErrNotSupported
+}
+
 // nextRevision allocates and returns the next revision. Increment is
 // atomic; callers still need m.mu (write) when pairing the new revision
 // with an appendEntry, so the log stays in revision order.

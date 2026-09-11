@@ -22,9 +22,7 @@ var (
 )
 
 func filterEventBySelectors(kv *server.KeyValue, labelSelector, fieldSelector string) bool {
-	if kv == nil || len(kv.Value) == 0 {
-		return true
-	} else if labelSelector == "" && fieldSelector == "" {
+	if kv == nil || len(kv.Value) == 0 || labelSelector == "" && fieldSelector == "" {
 		return true
 	}
 
@@ -70,9 +68,7 @@ func filterEventBySelectors(kv *server.KeyValue, labelSelector, fieldSelector st
 			for _, req := range fs.Requirements() {
 				value := fields[req.Field]
 				switch req.Operator {
-				case selection.Equals:
-					fallthrough
-				case selection.DoubleEquals:
+				case selection.DoubleEquals, selection.Equals:
 					if strings.Contains(value, req.Value) {
 						matches++
 					}

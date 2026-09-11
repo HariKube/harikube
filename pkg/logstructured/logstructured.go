@@ -22,6 +22,7 @@ type Log interface {
 	DbSize(ctx context.Context) (int64, error)
 	Compact(ctx context.Context, revision int64) (int64, error)
 	WaitForSyncTo(revision int64)
+	Transaction(ctx context.Context) (server.Transaction, error)
 }
 
 type LogStructured struct {
@@ -295,4 +296,8 @@ func (l *LogStructured) Compact(ctx context.Context, revision int64) (int64, err
 
 func (l *LogStructured) WaitForSyncTo(revision int64) {
 	l.log.WaitForSyncTo(revision)
+}
+
+func (l *LogStructured) Transaction(ctx context.Context) (server.Transaction, error) {
+	return l.log.Transaction(ctx)
 }

@@ -42,6 +42,7 @@ type Backend interface {
 	CurrentRevision(ctx context.Context) (int64, error)
 	Compact(ctx context.Context, revision int64) (int64, error)
 	WaitForSyncTo(revision int64)
+	Transaction(ctx context.Context) (Transaction, error)
 }
 
 type Dialect interface {
@@ -65,6 +66,10 @@ type Dialect interface {
 	FillRetryDelay(ctx context.Context)
 	TranslateStartKey(startKey string) string
 }
+
+type contextKey string
+
+const TransactionKey contextKey = "HARIKUBE_TRANSACTION"
 
 type Transaction interface {
 	Commit() error
