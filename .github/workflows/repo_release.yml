@@ -145,7 +145,7 @@ jobs:
               --name harikube_middleware \
               --net=host \
               quay.io/harikube/harikube:${{ steps.extract_branch.outputs.branch }} \
-              --listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal=WAL&cache=shared'
+              --listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_txlock=immediate&_stmt_cache_size=20&cache=shared'
             ```
 
             Change your Rancher `/etc/rancher/rke2/config.yaml`:

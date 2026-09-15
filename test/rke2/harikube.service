@@ -10,7 +10,7 @@ Restart=always
 RestartSec=5
 
 ExecStartPre=-/usr/bin/docker rm -f harikube_middleware
-ExecStart=/usr/bin/docker run --rm --name harikube_middleware --net=host -v harikube_db:/db harikube:target --listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal=WAL&cache=shared'
+ExecStart=/usr/bin/docker run --rm --name harikube_middleware --net=host -v harikube_db:/db harikube:target --listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_txlock=immediate&_stmt_cache_size=20&cache=shared'
 ExecStop=/usr/bin/docker rm -f harikube_middleware
 
 [Install]

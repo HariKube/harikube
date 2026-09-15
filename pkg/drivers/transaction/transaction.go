@@ -47,7 +47,7 @@ func (t *transaction) Get(ctx context.Context, key string, revision int64, keysO
 }
 
 func (t *transaction) Create(ctx context.Context, key string, value []byte, lease int64) (int64, error) {
-	if !strings.HasPrefix(key, "/harikube/transaction") {
+	if !strings.HasPrefix(key, "/harikube/transaction/") {
 		return t.backend.Create(ctx, key, value, lease)
 	} else if len(value) == 0 {
 		return 0, errors.Join(ErrMissingValue, server.ErrNotSupported)

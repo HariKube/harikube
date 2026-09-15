@@ -20,7 +20,7 @@ setup-test: cleanup-test
 		-e KAFKA_ENGRESS="$$(base64 -w0 kafka-engress.json)" \
 		-e KAFKA_ENGRESS_DLQ="$$(base64 -w0 kafka-ingress-dlq.json)" \
 		$(REPO)/$(IMAGE_NAME):$(TAG) \
-		--listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal=WAL&cache=shared'
+		--listen-address=0.0.0.0:2369 --endpoint='sqlite:///db/main.db?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_txlock=immediate&_stmt_cache_size=20&cache=shared'
 
 	kind create cluster --name $(KIND_CLUSTER) --config kind-config.yaml
 	kubectl wait --for=condition=Ready node/$(KIND_CLUSTER)-control-plane --timeout=240s
