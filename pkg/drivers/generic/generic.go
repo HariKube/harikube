@@ -618,7 +618,7 @@ func (d *Generic) Insert(ctx context.Context, key string, create, delete bool, c
 		delete = true
 	}
 
-	if len(labels) > 0 || !fieldsSet.AsSelector().Empty() || delete {
+	if len(value) > 0 && (len(labels) > 0 || !fieldsSet.AsSelector().Empty() || len(owners) > 0 || delete) {
 		var t server.Transaction
 		if at := ctx.Value(txKey); at != nil {
 			t = at.(server.Transaction)
