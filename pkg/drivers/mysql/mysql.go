@@ -62,12 +62,17 @@ var (
 		`CREATE INDEX kine_labels_name_index ON kine_labels (kine_name, name, value)`,
 		`CREATE TABLE IF NOT EXISTS kine_fields
 			(
-				kine_id BIGINT UNSIGNED,
+				kine_id BIGINT UNSIGNED NOT NULL,
 				kine_name VARCHAR(253) CHARACTER SET ascii,
-				value JSON,
-				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
-			) ENGINE=InnoDB;`,
-		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
+				kind_group_version VARCHAR(256),
+				value JSON NOT NULL,
+				value_text TEXT GENERATED ALWAYS AS (
+					CAST(value AS CHAR(65535))
+				) STORED,
+				CONSTRAINT fk_kine_fields_kine 
+					FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE,
+				FULLTEXT INDEX idx_kine_fields_value_ft (value_text)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
 		`CREATE TABLE IF NOT EXISTS kine_owners
 			(
 				kine_id BIGINT UNSIGNED,
@@ -81,7 +86,14 @@ var (
 		`ALTER TABLE kine MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT, MODIFY COLUMN create_revision BIGINT UNSIGNED, MODIFY COLUMN prev_revision BIGINT UNSIGNED`,
 		// Creating an empty migration to ensure that postgresql and mysql migrations match up
 		// with each other for a give value of KINE_SCHEMA_MIGRATION env var
-		``,
+		`ALTER TABLE kine_fields
+			MODIFY COLUMN kine_id BIGINT UNSIGNED NOT NULL,
+			MODIFY COLUMN value JSON NOT NULL,
+			ADD COLUMN value_text TEXT GENERATED ALWAYS AS (CAST(value AS CHAR(65535))) STORED,
+			DROP FOREIGN KEY kine_fields_ibfk_1,
+			ADD CONSTRAINT fk_kine_fields_kine FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE,
+			ADD FULLTEXT INDEX idx_kine_fields_value_ft (value_text),
+			CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
 	}
 	createDB = "CREATE DATABASE IF NOT EXISTS `%s`;"
 )
@@ -115,7 +127,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 		return false, nil, err
 	}
 
-	dialect.SelectorLookupSQL = "JSON_UNQUOTE(JSON_EXTRACT(value, '$.%s')) LIKE CONCAT('%%', ?, '%%')"
+	dialect.SelectorLookupSQL = "MATCH(value_text) AGAINST(? IN BOOLEAN MODE)"
 	dialect.LastInsertID = true
 	dialect.GetSizeSQL = query.New(`
 		SELECT SUM(data_length + index_length)

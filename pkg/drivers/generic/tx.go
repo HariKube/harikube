@@ -169,7 +169,7 @@ func (t *Tx) execute(ctx context.Context, sql *query.Named, args ...any) (result
 //nolint:revive
 func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRevision int64, value, prevValue []byte, obj runtime.Object, uid types.UID, labels map[string]string, fieldsSet fields.Set, owners []metav1.OwnerReference, finalizers []string, delete bool) (err error) {
 	metadataSQLs := []struct {
-		sql  string
+		sql  *query.Named
 		args []any
 	}{}
 
@@ -216,20 +216,20 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 			}
 
 			metadataSQLs = append(metadataSQLs, struct {
-				sql  string
+				sql  *query.Named
 				args []any
 			}{
-				sql:  t.d.InsertOwnerSQL.String(),
+				sql:  t.d.InsertOwnerSQL,
 				args: []any{id, owner.UID, owner.BlockOwnerDeletion},
 			})
 		}
 
 		for k, v := range labels {
 			metadataSQLs = append(metadataSQLs, struct {
-				sql  string
+				sql  *query.Named
 				args []any
 			}{
-				sql:  t.d.InsertLabelSQL.String(),
+				sql:  t.d.InsertLabelSQL,
 				args: []any{id, key, k, v},
 			})
 		}
@@ -246,10 +246,10 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 			}
 
 			metadataSQLs = append(metadataSQLs, struct {
-				sql  string
+				sql  *query.Named
 				args []any
 			}{
-				sql:  t.d.InsertFieldsSQL.String(),
+				sql:  t.d.InsertFieldsSQL,
 				args: []any{id, key, jsonData},
 			})
 		}
@@ -260,10 +260,10 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 	} else if _, ok := labels["skip-controller-manager-metadata-caching"]; ok && delete {
 		for _, owner := range owners {
 			metadataSQLs = append(metadataSQLs, struct {
-				sql  string
+				sql  *query.Named
 				args []any
 			}{
-				sql:  t.d.InsertOwnerSQL.String(),
+				sql:  t.d.InsertOwnerSQL,
 				args: []any{id, owner.UID, owner.BlockOwnerDeletion},
 			})
 		}
@@ -319,10 +319,10 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 
 				if t.d.LastInsertID {
 					metadataSQLs = append(metadataSQLs, struct {
-						sql  string
+						sql  *query.Named
 						args []any
 					}{
-						sql:  t.d.InsertLastInsertIDSQL.String(),
+						sql:  t.d.InsertLastInsertIDSQL,
 						args: []any{ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
 					})
 				} else {
@@ -350,10 +350,10 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 
 				if t.d.LastInsertID {
 					metadataSQLs = append(metadataSQLs, struct {
-						sql  string
+						sql  *query.Named
 						args []any
 					}{
-						sql:  t.d.InsertLastInsertIDSQL.String(),
+						sql:  t.d.InsertLastInsertIDSQL,
 						args: []any{ownedKey, ownedUID, 0, 0, ownedCreateRevision, ownedId, 0, ownedNewValue, ownedValue},
 					})
 				} else {
@@ -378,7 +378,7 @@ func (t *Tx) InsertMetadata(ctx context.Context, id int64, key string, createRev
 	}
 
 	for _, meta := range metadataSQLs {
-		if _, err = t.execute(ctx, &query.Named{Query: meta.sql}, meta.args...); err != nil {
+		if _, err = t.execute(ctx, meta.sql, meta.args...); err != nil {
 			return err
 		}
 	}

@@ -67,13 +67,15 @@ var (
 		`CREATE INDEX IF NOT EXISTS kine_labels_name_index ON kine_labels (kine_name, name, value)`,
 		`CREATE TABLE IF NOT EXISTS kine_fields
 			(
-				kine_id BIGINT,
+				kine_id BIGINT NOT NULL,
 				kine_name VARCHAR(253),
-				value JSONB,
-				FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
-			)`,
+				kind_group_version VARCHAR(256),
+				value JSONB NOT NULL,
+				CONSTRAINT fk_kine_fields_kine FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE
+			);`,
 		`CREATE INDEX IF NOT EXISTS kine_fields_name_index ON kine_fields (kine_name)`,
-		`CREATE INDEX IF NOT EXISTS kine_fields_value_index ON kine_fields USING GIN (value)`,
+		`CREATE EXTENSION IF NOT EXISTS pg_trgm`,
+		`CREATE INDEX IF NOT EXISTS idx_kine_fields_value_trgm ON kine_fields USING GIN ((value::text) gin_trgm_ops)`,
 		`CREATE TABLE IF NOT EXISTS kine_owners
 			(
 				kine_id BIGINT,
@@ -88,6 +90,17 @@ var (
 		// It is important to set the collation to "C" to ensure that LIKE and COMPARISON
 		// queries use the index.
 		`ALTER TABLE kine ALTER COLUMN name SET DATA TYPE TEXT COLLATE "C" USING name::TEXT COLLATE "C"`,
+		`UPDATE kine_fields SET kine_id = 0 WHERE kine_id IS NULL`,
+		`UPDATE kine_fields SET value = '{}'::jsonb WHERE value IS NULL`,
+		`ALTER TABLE kine_fields 
+				ALTER COLUMN kine_id SET NOT NULL,
+				ALTER COLUMN value SET NOT NULL`,
+		`ALTER TABLE kine_fields DROP CONSTRAINT IF EXISTS kine_fields_kine_id_fkey`,
+		`ALTER TABLE kine_fields DROP CONSTRAINT IF EXISTS fk_kine_fields_kine`,
+		`ALTER TABLE kine_fields ADD CONSTRAINT fk_kine_fields_kine FOREIGN KEY (kine_id) REFERENCES kine(id) ON DELETE CASCADE`,
+		`DROP INDEX IF EXISTS kine_fields_value_index`,
+		`CREATE EXTENSION IF NOT EXISTS pg_trgm`,
+		`CREATE INDEX IF NOT EXISTS idx_kine_fields_value_trgm ON kine_fields USING GIN ((value::text) gin_trgm_ops)`,
 	}
 	createDB = `CREATE DATABASE "%s";`
 )
@@ -126,7 +139,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 				kd.id <= $2
 		) AS ks
 		WHERE kv.id = ks.id`, "$", true, "Compact")
-	dialect.SelectorLookupSQL = "value->>? LIKE CONCAT('%%', ?::TEXT, '%%')"
+	dialect.SelectorLookupSQL = "(value::text) LIKE CONCAT('%%', ?::TEXT, '%%')"
 	dialect.GetOwnedSQL = query.New(`
 		SELECT s.id, s.name, s.create_revision, s.value FROM (
 			SELECT DISTINCT ON (k.name)
