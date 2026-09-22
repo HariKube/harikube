@@ -162,14 +162,17 @@ func renderFieldSelectorWhere(id, prefix, fieldSelector string, args []any, numb
 
 	args = append(args, prefix)
 
+	fieldReplace := strings.Contains(selectorLookupSQL, "%s")
+	fieldApend := strings.Count(selectorLookupSQL, "?") > 1
+
 	wheres := []string{}
 	for _, req := range selector.Requirements() {
 		req.Field = strings.ReplaceAll(req.Field, ".", "_")
 
 		sl := selectorLookupSQL
-		if strings.Contains(sl, "%s") {
+		if fieldReplace {
 			sl = fmt.Sprintf(sl, req.Field)
-		} else {
+		} else if fieldApend {
 			args = append(args, req.Field)
 		}
 
