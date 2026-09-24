@@ -25,8 +25,10 @@ import (
 )
 
 const (
-	defaultUnixDSN = "root@unix(/var/run/mysqld/mysqld.sock)/"
-	defaultHostDSN = "root@tcp(127.0.0.1)/"
+	defaultUnixDSN      = "root@unix(/var/run/mysqld/mysqld.sock)/"
+	defaultHostDSN      = "root@tcp(127.0.0.1)/"
+	separateHistoryFlag = "_kine_separate_history"
+	historyTriggerName  = "kine_archive_delete"
 )
 
 var (
@@ -95,6 +97,22 @@ var (
 			ADD FULLTEXT INDEX idx_kine_fields_value_ft (value_text),
 			CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
 	}
+	historySchema = []string{
+		`CREATE TABLE IF NOT EXISTS kine_history
+			(
+				id BIGINT UNSIGNED,
+				name VARCHAR(630) CHARACTER SET ascii,
+				uid VARCHAR(36) CHARACTER SET ascii,
+				created INTEGER,
+				deleted INTEGER,
+				create_revision BIGINT UNSIGNED,
+				prev_revision BIGINT UNSIGNED,
+				lease INTEGER,
+				value MEDIUMBLOB,
+				old_value MEDIUMBLOB,
+				PRIMARY KEY (id)
+			) ENGINE=InnoDB;`,
+	}
 	createDB = "CREATE DATABASE IF NOT EXISTS `%s`;"
 )
 
@@ -108,7 +126,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 		tlsConfig.MinVersion = cryptotls.VersionTLS11
 	}
 
-	config, err := prepareConfig(cfg.DataSourceName, tlsConfig)
+	config, separateHistory, err := prepareConfig(cfg.DataSourceName, tlsConfig)
 	if err != nil {
 		return false, nil, err
 	}
@@ -174,7 +192,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 		}
 		return startKey
 	}
-	if err := setup(dialect.DB); err != nil {
+	if err := setup(dialect.DB, separateHistory); err != nil {
 		return false, nil, err
 	}
 
@@ -182,7 +200,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 	return true, transaction.New(logstructured.New(sqllog.New(dialect, cfg.CompactInterval, cfg.CompactIntervalJitter, cfg.CompactTimeout, cfg.CompactMinRetain, cfg.CompactBatchSize, cfg.PollBatchSize))), nil
 }
 
-func setup(db *sql.DB) error {
+func setup(db *sql.DB, separateHistory bool) error {
 	logrus.Infof("Configuring database table schema and indexes, this may take a moment...")
 	var exists bool
 	err := db.QueryRow("SELECT 1 FROM information_schema.TABLES WHERE table_schema = DATABASE() AND table_name = ?", "kine").Scan(&exists)
@@ -220,8 +238,47 @@ func setup(db *sql.DB) error {
 		}
 	}
 
+	if separateHistory {
+		if err := setupHistory(db); err != nil {
+			return err
+		}
+	} else if err := disableHistory(db); err != nil {
+		return err
+	}
+
 	logrus.Infof("Database tables and indexes are up to date")
 	return nil
+}
+
+func setupHistory(db *sql.DB) error {
+	for _, stmt := range historySchema {
+		logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	var exists bool
+	err := db.QueryRow("SELECT 1 FROM information_schema.TRIGGERS WHERE trigger_schema = DATABASE() AND trigger_name = ?", historyTriggerName).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if !exists {
+		stmt := `CREATE TRIGGER kine_archive_delete BEFORE DELETE ON kine FOR EACH ROW INSERT IGNORE INTO kine_history (id, name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value) VALUES (OLD.id, OLD.name, OLD.uid, OLD.created, OLD.deleted, OLD.create_revision, OLD.prev_revision, OLD.lease, OLD.value, OLD.old_value)`
+		logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func disableHistory(db *sql.DB) error {
+	stmt := "DROP TRIGGER IF EXISTS kine_archive_delete"
+	logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+	_, err := db.Exec(stmt)
+	return err
 }
 
 func createDBIfNotExist(ctx context.Context, config *mysql.Config, connector driver.Connector) error {
@@ -258,7 +315,7 @@ func createDBIfNotExist(ctx context.Context, config *mysql.Config, connector dri
 	return nil
 }
 
-func prepareConfig(dataSourceName string, tlsConfig *cryptotls.Config) (*mysql.Config, error) {
+func prepareConfig(dataSourceName string, tlsConfig *cryptotls.Config) (*mysql.Config, bool, error) {
 	if len(dataSourceName) == 0 {
 		dataSourceName = defaultUnixDSN
 		if tlsConfig != nil {
@@ -267,12 +324,17 @@ func prepareConfig(dataSourceName string, tlsConfig *cryptotls.Config) (*mysql.C
 	}
 	config, err := mysql.ParseDSN(dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	separateHistory := false
+	if _, ok := config.Params[separateHistoryFlag]; ok {
+		separateHistory = true
+		delete(config.Params, separateHistoryFlag)
 	}
 	// setting up tlsConfig
 	if tlsConfig != nil {
 		if err := mysql.RegisterTLSConfig("kine", tlsConfig); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		config.TLSConfig = "kine"
 	}
@@ -283,7 +345,7 @@ func prepareConfig(dataSourceName string, tlsConfig *cryptotls.Config) (*mysql.C
 	config.DBName = dbName
 	config.DialFunc = dialer.CachingDialer.DialContext
 
-	return config, nil
+	return config, separateHistory, nil
 }
 
 func init() {

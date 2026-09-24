@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	defaultDSN = "postgres://postgres:postgres@localhost/"
+	defaultDSN          = "postgres://postgres:postgres@localhost/"
+	separateHistoryFlag = "_kine_separate_history"
 )
 
 var (
@@ -102,11 +103,36 @@ var (
 		`CREATE EXTENSION IF NOT EXISTS pg_trgm`,
 		`CREATE INDEX IF NOT EXISTS idx_kine_fields_value_trgm ON kine_fields USING GIN ((value::text) gin_trgm_ops)`,
 	}
+	historySchema = []string{
+		`CREATE TABLE IF NOT EXISTS kine_history
+ 			(
+				id BIGINT PRIMARY KEY,
+				name text COLLATE "C",
+				uid VARCHAR(36),
+				created INTEGER,
+				deleted INTEGER,
+				create_revision BIGINT,
+				prev_revision BIGINT,
+ 				lease INTEGER,
+ 				value bytea,
+ 				old_value bytea
+ 			);`,
+		`CREATE OR REPLACE FUNCTION kine_archive_delete() RETURNS TRIGGER AS $$
+			BEGIN
+				INSERT INTO kine_history (id, name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
+				VALUES (OLD.id, OLD.name, OLD.uid, OLD.created, OLD.deleted, OLD.create_revision, OLD.prev_revision, OLD.lease, OLD.value, OLD.old_value)
+				ON CONFLICT (id) DO NOTHING;
+				RETURN OLD;
+			END;
+		$$ LANGUAGE plpgsql`,
+		`DROP TRIGGER IF EXISTS kine_archive_delete ON kine`,
+		`CREATE TRIGGER kine_archive_delete BEFORE DELETE ON kine FOR EACH ROW EXECUTE FUNCTION kine_archive_delete()`,
+	}
 	createDB = `CREATE DATABASE "%s";`
 )
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, server.Backend, error) {
-	config, err := prepareConfig(cfg.DataSourceName, cfg.BackendTLSConfig)
+	config, separateHistory, err := prepareConfig(cfg.DataSourceName, cfg.BackendTLSConfig)
 	if err != nil {
 		return false, nil, err
 	}
@@ -178,7 +204,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 		}
 		return startKey
 	}
-	if err := setup(dialect.DB); err != nil {
+	if err := setup(dialect.DB, separateHistory); err != nil {
 		return false, nil, err
 	}
 
@@ -186,7 +212,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, se
 	return true, transaction.New(logstructured.New(sqllog.New(dialect, cfg.CompactInterval, cfg.CompactIntervalJitter, cfg.CompactTimeout, cfg.CompactMinRetain, cfg.CompactBatchSize, cfg.PollBatchSize))), nil
 }
 
-func setup(db *sql.DB) error {
+func setup(db *sql.DB, separateHistory bool) error {
 	logrus.Infof("Configuring database table schema and indexes, this may take a moment...")
 	var version string
 	collationSupported := true
@@ -227,7 +253,42 @@ func setup(db *sql.DB) error {
 		}
 	}
 
+	if separateHistory {
+		if err := setupHistory(db, collationSupported); err != nil {
+			return err
+		}
+	} else if err := disableHistory(db); err != nil {
+		return err
+	}
+
 	logrus.Infof("Database tables and indexes are up to date")
+	return nil
+}
+
+func setupHistory(db *sql.DB, collationSupported bool) error {
+	for _, stmt := range historySchema {
+		if !collationSupported {
+			stmt = strings.ReplaceAll(stmt, ` COLLATE "C"`, "")
+		}
+		logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func disableHistory(db *sql.DB) error {
+	for _, stmt := range []string{
+		`DROP TRIGGER IF EXISTS kine_archive_delete ON kine`,
+		`DROP FUNCTION IF EXISTS kine_archive_delete()`,
+	} {
+		logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -263,7 +324,7 @@ func createDBIfNotExist(ctx context.Context, config *pgx.ConnConfig, connector d
 	return nil
 }
 
-func prepareConfig(dataSourceName string, tlsInfo tls.Config) (*pgx.ConnConfig, error) {
+func prepareConfig(dataSourceName string, tlsInfo tls.Config) (*pgx.ConnConfig, bool, error) {
 	if len(dataSourceName) == 0 {
 		dataSourceName = defaultDSN
 	} else {
@@ -271,7 +332,7 @@ func prepareConfig(dataSourceName string, tlsInfo tls.Config) (*pgx.ConnConfig, 
 	}
 	u, err := util.ParseURL(dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if len(u.Path) == 0 || u.Path == "/" {
 		u.Path = "/kubernetes"
@@ -283,7 +344,12 @@ func prepareConfig(dataSourceName string, tlsInfo tls.Config) (*pgx.ConnConfig, 
 
 	queryMap, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	separateHistory := false
+	if _, ok := queryMap[separateHistoryFlag]; ok {
+		separateHistory = true
+		delete(queryMap, separateHistoryFlag)
 	}
 	// set up tls dsn
 	params := url.Values{}
@@ -309,10 +375,10 @@ func prepareConfig(dataSourceName string, tlsInfo tls.Config) (*pgx.ConnConfig, 
 	u.RawQuery = params.Encode()
 	config, err := pgx.ParseConfig(u.String())
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	config.DialFunc = dialer.CachingDialer.DialContext
-	return config, nil
+	return config, separateHistory, nil
 }
 
 func init() {

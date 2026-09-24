@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -17,6 +18,8 @@ import (
 	"github.com/k3s-io/kine/pkg/server"
 	"github.com/sirupsen/logrus"
 )
+
+const separateHistoryFlag = "_kine_separate_history"
 
 var (
 	DefaultParams = "_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_txlock=immediate&_stmt_cache_size=20&cache=shared"
@@ -69,6 +72,26 @@ var (
 			)`,
 		`CREATE INDEX IF NOT EXISTS kine_owners_owner_index ON kine_owners (owner)`,
 	}
+	historySchema = []string{
+		`CREATE TABLE IF NOT EXISTS kine_history
+			(
+				id INTEGER PRIMARY KEY,
+				name TEXT,
+				uid INTEGER,
+				created INTEGER,
+				deleted INTEGER,
+				create_revision INTEGER,
+				prev_revision INTEGER,
+				lease INTEGER,
+				value BLOB,
+				old_value BLOB
+			)`,
+		`CREATE TRIGGER IF NOT EXISTS kine_archive_delete BEFORE DELETE ON kine
+			BEGIN
+				INSERT OR IGNORE INTO kine_history (id, name, uid, created, deleted, create_revision, prev_revision, lease, value, old_value)
+				VALUES (OLD.id, OLD.name, OLD.uid, OLD.created, OLD.deleted, OLD.create_revision, OLD.prev_revision, OLD.lease, OLD.value, OLD.old_value);
+			END`,
+	}
 )
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *drivers.Config) (bool, server.Backend, error) {
@@ -92,6 +115,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 	noCompactCheckpoint := strings.Contains(cfg.DataSourceName, "_kine_disable_compact_wal_checkpoint")
 	noAutoCheckpoint := strings.Contains(cfg.DataSourceName, "_kine_disable_wal_autocheckpoint")
 	noStartupVacuum := strings.Contains(cfg.DataSourceName, "_kine_disable_startup_vacuum")
+	separateHistory := hasQueryFlag(cfg.DataSourceName, separateHistoryFlag)
 
 	if driverName == "litestream" {
 		logrus.Infof("Litestream compatibility options enabled (all WAL checkpointing and startup VACUUM disabled)")
@@ -100,7 +124,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 		noStartupVacuum = true
 	}
 
-	connector, err := newConnector(driverName, cfg.DataSourceName)
+	connector, err := newConnector(driverName, stripQueryFlag(cfg.DataSourceName, separateHistoryFlag))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,7 +164,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 	dialect.TranslateErr = translateErr
 	dialect.ErrCode = errCode
 
-	if err := setup(dialect.DB, noCompactCheckpoint, noAutoCheckpoint, noStartupVacuum); err != nil {
+	if err := setup(dialect.DB, noCompactCheckpoint, noAutoCheckpoint, noStartupVacuum, separateHistory); err != nil {
 		return nil, nil, fmt.Errorf("setup db: %w", err)
 	}
 
@@ -148,7 +172,7 @@ func NewVariant(ctx context.Context, wg *sync.WaitGroup, driverName string, cfg 
 	return logstructured.New(sqllog.New(dialect, cfg.CompactInterval, cfg.CompactIntervalJitter, cfg.CompactTimeout, cfg.CompactMinRetain, cfg.CompactBatchSize, cfg.PollBatchSize)), dialect, nil
 }
 
-func setup(db *sql.DB, noCheckpointing, noAutoCheckpoint, noStartupVacuum bool) error {
+func setup(db *sql.DB, noCheckpointing, noAutoCheckpoint, noStartupVacuum, separateHistory bool) error {
 	logrus.Infof("Kine built with sqlite from %s", version())
 	logrus.Info("Configuring database table schema and indexes, this may take a moment...")
 
@@ -169,6 +193,14 @@ func setup(db *sql.DB, noCheckpointing, noAutoCheckpoint, noStartupVacuum bool) 
 		}
 	}
 
+	if separateHistory {
+		if err := setupHistory(db); err != nil {
+			return err
+		}
+	} else if err := disableHistory(db); err != nil {
+		return err
+	}
+
 	logrus.Infof("Database tables and indexes are up to date")
 
 	if noStartupVacuum {
@@ -184,6 +216,54 @@ func setup(db *sql.DB, noCheckpointing, noAutoCheckpoint, noStartupVacuum bool) 
 	}
 
 	return nil
+}
+
+func setupHistory(db *sql.DB) error {
+	for _, stmt := range historySchema {
+		logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func disableHistory(db *sql.DB) error {
+	stmt := `DROP TRIGGER IF EXISTS kine_archive_delete`
+	logrus.Tracef("SETUP EXEC HISTORY : %v", query.Strip(stmt))
+	_, err := db.Exec(stmt)
+	return err
+}
+
+func hasQueryFlag(dsn, flag string) bool {
+	_, params, _ := strings.Cut(dsn, "?")
+	query, err := url.ParseQuery(params)
+	if err != nil {
+		return strings.Contains(dsn, flag)
+	}
+	_, ok := query[flag]
+	return ok
+}
+
+func stripQueryFlag(dsn, flag string) string {
+	path, params, found := strings.Cut(dsn, "?")
+	if !found {
+		return dsn
+	}
+	query, err := url.ParseQuery(params)
+	if err != nil {
+		return dsn
+	}
+	if _, ok := query[flag]; !ok {
+		return dsn
+	}
+	delete(query, flag)
+	encoded := query.Encode()
+	if encoded == "" {
+		return path
+	}
+	return path + "?" + encoded
 }
 
 func init() {

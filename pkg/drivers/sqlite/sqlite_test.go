@@ -94,6 +94,67 @@ func freelistCount(t *testing.T, db *sql.DB) int64 {
 	return count
 }
 
+func historyRowCount(t *testing.T, db *sql.DB, table string) int64 {
+	t.Helper()
+
+	var count int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&count); err != nil {
+		t.Fatalf("failed to count %s rows: %v", table, err)
+	}
+
+	return count
+}
+
+func TestSetupStreamsDeletedRowsToSeparateTable(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "history.db")
+	connector, err := newConnector("sqlite3", dbPath+"?"+DefaultParams)
+	if err != nil {
+		t.Fatalf("Failed to create connector: %v", err)
+	}
+
+	db := sql.OpenDB(connector)
+	defer db.Close()
+
+	if err := setup(db, false, false, true, false); err != nil {
+		t.Fatalf("initial setup() failed: %v", err)
+	}
+
+	_, err = db.Exec(`INSERT INTO kine (id, name, created, deleted, create_revision, prev_revision, lease, value, old_value)
+		VALUES
+			(1, '/registry/a', 1, 0, 1, 0, 0, x'01', NULL),
+			(2, '/registry/a', 1, 0, 2, 1, 0, x'02', x'01'),
+			(3, '/registry/b', 1, 1, 3, 0, 0, x'03', NULL)`)
+	if err != nil {
+		t.Fatalf("failed to seed kine rows: %v", err)
+	}
+
+	if err := setup(db, false, false, true, true); err != nil {
+		t.Fatalf("history setup() failed: %v", err)
+	}
+
+	if got := historyRowCount(t, db, "kine"); got != 3 {
+		t.Fatalf("kine row count = %d, want 3", got)
+	}
+	if got := historyRowCount(t, db, "kine_history"); got != 0 {
+		t.Fatalf("kine_history row count = %d, want 0", got)
+	}
+
+	var exists bool
+	if _, err := db.Exec(`DELETE FROM kine WHERE id = 2`); err != nil {
+		t.Fatalf("failed to delete live kine row: %v", err)
+	}
+
+	if got := historyRowCount(t, db, "kine_history"); got != 1 {
+		t.Fatalf("kine_history row count after delete = %d, want 1", got)
+	}
+	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM kine_history WHERE id = 2)`).Scan(&exists); err != nil {
+		t.Fatalf("failed to check archived delete row: %v", err)
+	}
+	if !exists {
+		t.Fatal("expected deleted kine row to be streamed into kine_history")
+	}
+}
+
 func TestSetupVacuumReclaimsDiskSpace(t *testing.T) {
 	const rowCount = 10000
 
@@ -106,7 +167,7 @@ func TestSetupVacuumReclaimsDiskSpace(t *testing.T) {
 	}
 
 	// Run setup with VACUUM enabled (noStartupVacuum=false).
-	if err := setup(db, false, false, false); err != nil {
+	if err := setup(db, false, false, false, false); err != nil {
 		t.Fatalf("setup() failed: %v", err)
 	}
 
@@ -133,7 +194,7 @@ func TestSetupVacuumDisabledPreservesFileSize(t *testing.T) {
 	}
 
 	// Run setup with VACUUM disabled (noStartupVacuum=true).
-	if err := setup(db, false, false, true); err != nil {
+	if err := setup(db, false, false, true, false); err != nil {
 		t.Fatalf("setup() failed: %v", err)
 	}
 
