@@ -30,8 +30,8 @@ _deploy:
 
 _test:
 	vcluster connect harikube
-	$(MAKE) -BC ../suites vcluster
-	$(MAKE) -BC ../suites simple
+	$(MAKE) -BC $(MAKEFILE_DIR)suites vcluster
+	$(MAKE) -BC $(MAKEFILE_DIR)suites simple
 	vcluster disconnect ||:
 
 _cleanup-test:

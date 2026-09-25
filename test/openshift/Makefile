@@ -59,11 +59,11 @@ _deploy:
 	
 	(cd ../../harikube-helm-charts && (git status | grep harikube/values.yaml || git apply ../test/openshift/openshift-user.patch))
 
-	$(MAKE) -BC ../helm _deploy
+	$(MAKE) -BC $(MAKEFILE_DIR)helm _deploy
 
 _test:
 	vcluster connect harikube
-	$(MAKE) -BC ../suites simple
+	$(MAKE) -BC $(MAKEFILE_DIR)suites simple
 	vcluster disconnect ||:
 
 .PHONY: cleanup-test

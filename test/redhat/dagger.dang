@@ -15,6 +15,8 @@ type Openshift {
     [ "quay.io/harikube/kube-apiserver", "v1.36.2-rootless" ],
     [ "quay.io/harikube/kube-controller-manager", "v1.36.2-rootless" ],
     [ "quay.io/harikube/vcluster-pro", "0.32.1" ],
+    [ "quay.io/harikube/api-extension", "beta-v1.0.0-1" ],
+    [ "quay.io/harikube/serverless-kube-watch-trigger", "beta-v1.0.0-10" ],
   ]
 
   pub charts: [String!]! = [
