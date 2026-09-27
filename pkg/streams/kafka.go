@@ -89,7 +89,7 @@ type KafkaWriter struct {
 	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
 }
 
-func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.Backend, configEnc string, dlqConfigEnc string) error {
+func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.Backend, configEnc string, dlqConfigEnc string, kubernetesAPIEndpoint string, validationPoolSize int) error {
 	configBytes, err := base64.StdEncoding.DecodeString(configEnc)
 	if err != nil {
 		return err
@@ -146,6 +146,212 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 			brokers := fmt.Sprintf("%v", config.Brokers)
 			logrus.Infof("Worker %s subscribed to topic: %s", brokers, config.Topic)
 
+			// bounded worker pool controls in-flight validation concurrency
+			if validationPoolSize <= 0 {
+				validationPoolSize = 1
+			}
+			sem := make(chan struct{}, validationPoolSize)
+			var workerWG2 sync.WaitGroup
+			fatal := make(chan struct{}, 1)
+
+			// shared per-message processing closure to avoid duplication; returns true if outer loop should break
+			handleMessage := func(mm kafka.Message, async bool) bool {
+				key := string(mm.Key)
+				keyParts := strings.Split(key, "#")
+				if len(keyParts) != 2 {
+					logrus.Errorf("Worker %s received invalid key for %s: %v", brokers, key, errors.New("invalid topic format"))
+
+					if dlqWriter != nil {
+						br := false
+						dlqWriter.SendMessage(key, mm.Value,
+							func(dlqErr error) {
+								logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
+								br = true
+							},
+							map[string][]byte{"x-error-reason": []byte(fmt.Sprintf("invalid key format: %s", key))},
+						)
+						if br {
+							if async {
+								select {
+								case fatal <- struct{}{}:
+								default:
+								}
+								_ = r.Close()
+							}
+							return true
+						}
+					}
+
+					commCtx, commCancel := context.WithTimeout(ctx, 5*time.Second)
+					if err := r.CommitMessages(commCtx, mm); err != nil {
+						logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
+						commCancel()
+						return true
+					}
+					commCancel()
+					return false
+				}
+
+				var backendErr error
+				opCtx, opCancel := context.WithTimeout(ctx, 30*time.Second)
+				defer opCancel()
+
+				// If no kubernetes API endpoint is provided, route every message to DLQ and commit
+				if kubernetesAPIEndpoint == "" {
+					if dlqWriter != nil {
+						br := false
+						dlqWriter.SendMessage(key, mm.Value,
+							func(dlqErr error) {
+								logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
+								br = true
+							},
+							map[string][]byte{"x-error-reason": []byte("kubernetes API endpoint not configured")},
+						)
+						if br {
+							if async {
+								select {
+								case fatal <- struct{}{}:
+								default:
+								}
+								_ = r.Close()
+							}
+							return true
+						}
+					}
+
+					commCtx, commCancel := context.WithTimeout(ctx, 10*time.Second)
+					// TODO retry logic
+					if err := r.CommitMessages(commCtx, mm); err != nil {
+						logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
+						commCancel()
+						return true
+					}
+					commCancel()
+					return false
+				}
+
+				// Perform Kubernetes dry-run validation before trying backend mutations
+				if err := func() error {
+					kubeCtx, kubeCancel := context.WithTimeout(ctx, 10*time.Second)
+					defer kubeCancel()
+					return performKubernetesDryRun(kubeCtx, kubernetesAPIEndpoint, keyParts[0], keyParts[1], mm.Value)
+				}(); err != nil {
+					// Send to DLQ and commit
+					logrus.Errorf("Worker %s dry-run validation failed for [%s]: %v", brokers, key, err)
+					if dlqWriter != nil {
+						br := false
+						dlqWriter.SendMessage(key, mm.Value,
+							func(dlqErr error) {
+								logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
+								br = true
+							},
+							map[string][]byte{"x-error-reason": []byte(err.Error())},
+						)
+						if br {
+							if async {
+								select {
+								case fatal <- struct{}{}:
+								default:
+								}
+								_ = r.Close()
+							}
+							return true
+						}
+					}
+
+					commCtx, commCancel := context.WithTimeout(ctx, 10*time.Second)
+					if err := r.CommitMessages(commCtx, mm); err != nil {
+						logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
+						commCancel()
+						return true
+					}
+					commCancel()
+					return false
+				}
+				switch keyParts[1] {
+				case "create":
+					obj := &unstructured.Unstructured{}
+					if _, _, backendErr = unstructuredDecoder.Decode(mm.Value, nil, obj); backendErr != nil {
+						logrus.Errorf("Worker %s failed to decode object [%s]: %v", brokers, key, backendErr)
+						return false
+					}
+					if obj.GetCreationTimestamp().Time.IsZero() {
+						obj.SetCreationTimestamp(metav1.NewTime(time.Now()))
+					}
+					if obj.GetGeneration() == 0 {
+						obj.SetGeneration(1)
+					}
+					if obj.GetUID() == "" {
+						obj.SetUID(types.UID(uuid.New().String()))
+					}
+					if obj.GetNamespace() == "" {
+						obj.SetNamespace("default")
+					}
+					var objNewValue []byte
+					objNewValue, backendErr = jsoniter.Marshal(obj)
+					if backendErr != nil {
+						logrus.Errorf("Worker %s failed to default new object [%s]: %v", brokers, key, backendErr)
+						return false
+					}
+					if _, backendErr = backend.Create(opCtx, keyParts[0], objNewValue, 0); backendErr != nil {
+						logrus.Errorf("Worker %s failed to create object [%s]: %v", brokers, key, backendErr)
+					}
+				case "update":
+					obj := util.GetObjectByKey(keyParts[0])
+					if _, _, backendErr = decoder.Decode(mm.Value, nil, obj); backendErr != nil {
+						logrus.Errorf("Worker %s failed to decode object [%s]: %v", brokers, key, backendErr)
+						return false
+					}
+					var revision int64
+					resourceVersion := util.GetResourceVersionByObject(obj)
+					revision, backendErr = strconv.ParseInt(resourceVersion, 10, 64)
+					if backendErr != nil {
+						logrus.Errorf("Worker %s failed to parse resource version %s of [%s]: %v", brokers, resourceVersion, key, backendErr)
+						return false
+					}
+					if _, _, _, backendErr = backend.Update(opCtx, keyParts[0], mm.Value, revision, 0); backendErr != nil {
+						logrus.Errorf("Worker %s failed to update object [%s]: %v", brokers, key, backendErr)
+					}
+				case "delete":
+					if _, _, _, backendErr = backend.Delete(opCtx, keyParts[0], 0); backendErr != nil {
+						logrus.Errorf("Worker %s failed to delete object [%s]: %v", brokers, key, backendErr)
+					}
+				default:
+					backendErr = fmt.Errorf("Worker %s unsupported operation: %s", brokers, keyParts[1])
+				}
+
+				commCtx, commCancel := context.WithTimeout(ctx, 10*time.Second)
+
+				if backendErr != nil && dlqWriter != nil {
+					br := false
+					dlqWriter.SendMessage(key, mm.Value,
+						func(dlqErr error) {
+							logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
+							br = true
+						},
+						map[string][]byte{"x-error-reason": []byte(backendErr.Error())},
+					)
+					if br {
+						commCancel()
+						if async {
+							select {
+							case fatal <- struct{}{}:
+							default:
+							}
+							_ = r.Close()
+						}
+						return true
+					}
+				}
+				if err := r.CommitMessages(commCtx, mm); err != nil {
+					logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
+					commCancel()
+					return true
+				}
+				commCancel()
+				return false
+			}
+
 			for {
 				if ctx.Err() != nil {
 					break
@@ -167,143 +373,27 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 				fmt.Printf("Worker %ss: Topic = %s, Partition = %d, Offset = %d, Key = %s \n",
 					brokers, m.Topic, m.Partition, m.Offset, key)
 
-				keyParts := strings.Split(key, "#")
-				if len(keyParts) != 2 {
-					logrus.Errorf("Worker %s received invalid key for %s: %v", brokers, key, errors.New("invalid topic format"))
-
-					if dlqWriter != nil {
-						br := false
-						dlqWriter.SendMessage(key, m.Value,
-							func(dlqErr error) {
-								logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
-
-								br = true
-							},
-							map[string][]byte{
-								"x-error-reason": []byte(fmt.Sprintf("invalid key format: %s", key)),
-							},
-						)
-						if br {
-							break
-						}
-					}
-
-					commCtx, commCancel := context.WithTimeout(ctx, 5*time.Second)
-
-					// TODO retry logic
-					if err := r.CommitMessages(commCtx, m); err != nil {
-						logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
-
-						commCancel()
-
-						break
-					}
-
-					commCancel()
-
+				// if configured for concurrency, dispatch message processing to worker pool
+				if validationPoolSize > 1 {
+					sem <- struct{}{}
+					workerWG2.Add(1)
+					go func(mm kafka.Message) {
+						defer func() { <-sem; workerWG2.Done() }()
+						handleMessage(mm, true)
+					}(m)
+					// continue outer loop; original inline path will run only when pool size == 1
 					continue
 				}
 
-				var backendErr error
-				opCtx, opCancel := context.WithTimeout(ctx, 30*time.Second)
-				switch keyParts[1] {
-				case "create":
-					obj := &unstructured.Unstructured{}
-					if _, _, backendErr = unstructuredDecoder.Decode(m.Value, nil, obj); backendErr != nil {
-						logrus.Errorf("Worker %s failed to decode object [%s]: %v", brokers, key, backendErr)
-
-						break
-					}
-
-					if obj.GetCreationTimestamp().Time.IsZero() {
-						obj.SetCreationTimestamp(metav1.NewTime(time.Now()))
-					}
-					if obj.GetGeneration() == 0 {
-						obj.SetGeneration(1)
-					}
-					if obj.GetUID() == "" {
-						obj.SetUID(types.UID(uuid.New().String()))
-					}
-					if obj.GetNamespace() == "" {
-						obj.SetNamespace("default")
-					}
-
-					var objNewValue []byte
-					objNewValue, backendErr = jsoniter.Marshal(obj)
-					if backendErr != nil {
-						logrus.Errorf("Worker %s failed to default new object [%s]: %v", brokers, key, backendErr)
-
-						break
-					}
-
-					if _, backendErr = backend.Create(opCtx, keyParts[0], objNewValue, 0); backendErr != nil {
-						logrus.Errorf("Worker %s failed to create object [%s]: %v", brokers, key, backendErr)
-					}
-				case "update":
-					obj := util.GetObjectByKey(keyParts[0])
-					if _, _, backendErr = decoder.Decode(m.Value, nil, obj); backendErr != nil {
-						logrus.Errorf("Worker %s failed to decode object [%s]: %v", brokers, key, backendErr)
-
-						break
-					}
-
-					var revision int64
-					resourceVersion := util.GetResourceVersionByObject(obj)
-					revision, backendErr = strconv.ParseInt(resourceVersion, 10, 64)
-					if backendErr != nil {
-						logrus.Errorf("Worker %s failed to parse resource version %s of [%s]: %v", brokers, resourceVersion, key, backendErr)
-
-						break
-					}
-
-					if _, _, _, backendErr = backend.Update(opCtx, keyParts[0], m.Value, revision, 0); backendErr != nil {
-						logrus.Errorf("Worker %s failed to update object [%s]: %v", brokers, key, backendErr)
-					}
-				case "delete":
-					if _, _, _, backendErr = backend.Delete(opCtx, keyParts[0], 0); backendErr != nil {
-						logrus.Errorf("Worker %s failed to delete object [%s]: %v", brokers, key, backendErr)
-					}
-				default:
-					backendErr = fmt.Errorf("Worker %s unsupported operation: %s", brokers, keyParts[1])
-				}
-				opCancel()
-
-				commCtx, commCancel := context.WithTimeout(ctx, 10*time.Second)
-
-				if backendErr != nil && dlqWriter != nil {
-					br := false
-					dlqWriter.SendMessage(key, m.Value,
-						func(dlqErr error) {
-							logrus.Errorf("Worker %s failed to write to DLQ [Key: %s]: %v. Skipping offset commit.", brokers, key, dlqErr)
-
-							br = true
-						},
-						map[string][]byte{
-							"x-error-reason": []byte(backendErr.Error()),
-						},
-					)
-					if br {
-						commCancel()
-
-						break
-					}
-				}
-
-				// TODO retry logic
-				if err := r.CommitMessages(commCtx, m); err != nil {
-					logrus.Errorf("Worker %s error committing message [%s]: %v", brokers, key, err)
-
-					commCancel()
-
+				// synchronous processing for non-pooled path
+				if handleMessage(m, false) {
 					break
 				}
-
-				commCancel()
-
-				if ctx.Err() != nil {
-					break
-				}
+				continue
 			}
+
+			// wait for any in-flight worker goroutines to finish
+			workerWG2.Wait()
 
 			if err := r.Close(); err != nil {
 				logrus.Errorf("Worker %s failed to close reader: %v", brokers, err)

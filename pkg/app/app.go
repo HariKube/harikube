@@ -42,6 +42,19 @@ func New() *cli.App {
 			EnvVars:     []string{"KINE_ENDPOINT"},
 		},
 		&cli.StringFlag{
+			Name:        "kubernetes-api-endpoint",
+			Usage:       "Kubernetes API server endpoint used by components (e.g., Kafka ingress dry-run gate).",
+			Destination: &config.KubernetesAPIEndpoint,
+			EnvVars:     []string{"KINE_KUBERNETES_API_ENDPOINT"},
+		},
+		&cli.IntFlag{
+			Name:        "kubernetes-api-validation-pool-size",
+			Usage:       "Size of the Kubernetes API dry-run validation pool used by Kafka ingress processing.",
+			Destination: &config.KubernetesAPIValidationPoolSize,
+			Value:       10,
+			EnvVars:     []string{"KINE_KUBERNETES_API_VALIDATION_POOL_SIZE"},
+		},
+		&cli.StringFlag{
 			Name:        "ca-file",
 			Usage:       "CA cert for DB connection.",
 			Destination: &config.BackendTLSConfig.CAFile,

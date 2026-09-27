@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -186,6 +187,37 @@ func GetObjectByKey(key string) runtime.Object {
 		return &certv1.CertificateSigningRequest{}
 	default:
 		return &metav1.PartialObjectMetadata{}
+	}
+}
+
+func GetResourceMappingByGVK(gvk schema.GroupVersionKind) (registryPrefix, apiBasePath string, namespaced bool) {
+	switch {
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Pod":
+		return "/registry/pods/", "/api/v1/namespaces/{namespace}/pods", true
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Event":
+		return "/registry/events/", "/api/v1/namespaces/{namespace}/events", true
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Secret":
+		return "/registry/secrets/", "/api/v1/namespaces/{namespace}/secrets", true
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Namespace":
+		return "/registry/namespaces/", "/api/v1/namespaces", false
+	case gvk.Group == "apps" && gvk.Version == "v1" && gvk.Kind == "ReplicaSet":
+		return "/registry/replicasets/", "/apis/apps/v1/namespaces/{namespace}/replicasets", true
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "ReplicationController":
+		return "/registry/replicationcontrollers/", "/api/v1/namespaces/{namespace}/replicationcontrollers", true
+	case gvk.Group == "batch" && gvk.Version == "v1" && gvk.Kind == "Job":
+		return "/registry/jobs/", "/apis/batch/v1/namespaces/{namespace}/jobs", true
+	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Node":
+		// historically referred to as "minions" in the etcd registry
+		return "/registry/minions/", "/api/v1/nodes", false
+	case gvk.Group == "certificates.k8s.io" && gvk.Version == "v1" && gvk.Kind == "CertificateSigningRequest":
+		return "/registry/certificatesigningrequests/", "/apis/certificates.k8s.io/v1/certificatesigningrequests", false
+	default:
+		// best-effort fallback to handle other kinds (CRDs, etc.)
+		plural := pluralize.Plural(strings.ToLower(gvk.Kind))
+		if gvk.Group == "" {
+			return "/registry/" + plural + "/", "/api/" + gvk.Version + "/namespaces/{namespace}/" + plural, true
+		}
+		return "/registry/" + plural + "/", "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/{namespace}/" + plural, true
 	}
 }
 

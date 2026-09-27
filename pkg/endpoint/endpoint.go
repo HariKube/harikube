@@ -39,25 +39,27 @@ const (
 )
 
 type Config struct {
-	GRPCServer            *grpc.Server
-	WaitGroup             *sync.WaitGroup
-	Listener              string
-	Endpoint              string
-	ConnectionPoolConfig  generic.ConnectionPoolConfig
-	ServerTLSConfig       tls.Config
-	BackendTLSConfig      tls.Config
-	MetricsRegisterer     prometheus.Registerer
-	NotifyInterval        time.Duration
-	EmulatedETCDVersion   string
-	CompactInterval       time.Duration
-	CompactIntervalJitter int
-	CompactTimeout        time.Duration
-	CompactMinRetain      int64
-	CompactBatchSize      int64
-	PollBatchSize         int64
-	LogFormat             string
-	PeerConfig            drivers.PeerConfig
-	S3Config              drivers.S3Config
+	GRPCServer                      *grpc.Server
+	WaitGroup                       *sync.WaitGroup
+	Listener                        string
+	Endpoint                        string
+	KubernetesAPIEndpoint           string
+	KubernetesAPIValidationPoolSize int
+	ConnectionPoolConfig            generic.ConnectionPoolConfig
+	ServerTLSConfig                 tls.Config
+	BackendTLSConfig                tls.Config
+	MetricsRegisterer               prometheus.Registerer
+	NotifyInterval                  time.Duration
+	EmulatedETCDVersion             string
+	CompactInterval                 time.Duration
+	CompactIntervalJitter           int
+	CompactTimeout                  time.Duration
+	CompactMinRetain                int64
+	CompactBatchSize                int64
+	PollBatchSize                   int64
+	LogFormat                       string
+	PeerConfig                      drivers.PeerConfig
+	S3Config                        drivers.S3Config
 }
 
 type ETCDConfig struct {
@@ -137,8 +139,8 @@ func Listen(ctx context.Context, config Config) (etcd ETCDConfig, rerr error) {
 		return ETCDConfig{}, fmt.Errorf("starting kine backend: %w", err)
 	}
 
-	if config, ok := os.LookupEnv("KAFKA_INGRESS"); ok {
-		if err := streams.StartKafkaConsumer(ctx, wg, backend, config, os.Getenv("KAFKA_INGRESS_DLQ")); err != nil {
+	if kafkaConfig, ok := os.LookupEnv("KAFKA_INGRESS"); ok {
+		if err := streams.StartKafkaConsumer(ctx, wg, backend, kafkaConfig, os.Getenv("KAFKA_INGRESS_DLQ"), config.KubernetesAPIEndpoint, config.KubernetesAPIValidationPoolSize); err != nil {
 			return ETCDConfig{}, fmt.Errorf("creating Kafka consumer: %w", err)
 		}
 	}
