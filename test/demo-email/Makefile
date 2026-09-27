@@ -9,7 +9,7 @@ _deploy:
 	kubectl apply -f https://github.com/HariKube/api-extension/releases/download/beta-v1.0.0-1/bundle-beta-v1.0.0-1.yaml
 	kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 deployment/api-extension-controller-manager --timeout=2m
 
-	kubectl apply -f https://github.com/HariKube/serverless-kube-watch-trigger/releases/download/beta-v1.0.0-14/bundle-beta-v1.0.0-14.yaml
+	kubectl apply -f https://github.com/HariKube/serverless-kube-watch-trigger/releases/download/rc-v1.0.0-1/bundle-rc-v1.0.0-1.yaml
 	kubectl wait -n serverless-kube-watch-trigger-system --for=jsonpath='{.status.readyReplicas}'=1 deployment/serverless-kube-watch-trigger-controller-manager --timeout=2m
 
 

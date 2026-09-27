@@ -85,8 +85,8 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		} else {
 			// best-effort: singularize and title-case the kind, assume core v1
 			singular := resourcePlural
-			if strings.HasSuffix(singular, "s") {
-				singular = strings.TrimSuffix(singular, "s")
+			if before, ok0 := strings.CutSuffix(singular, "s"); ok0 {
+				singular = before
 			}
 			gvk = schema.GroupVersionKind{Group: "", Version: "v1", Kind: strings.Title(singular)}
 		}

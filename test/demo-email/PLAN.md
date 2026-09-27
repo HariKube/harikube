@@ -66,3 +66,164 @@ Summarise the flow, emphasize the decoupling of decision logic, and invite quest
 
 Ez elegáns. A jóváhagyás itt nem egy külön rendszer, hanem egy újabb watch-esemény: az agent leteszi a javaslatot, feliratkozik rá, és akkor ébred fel, amikor egy ember átírja. Nem kell hozzá workflow engine, jóváhagyó UI vagy callback. Ezt a demóban meg is érdemes mutatni, mert ütős. egy masik agent hagyja jova :D
  "Egyszerű, lineáris taskok" otletet adtal, a defaulting webhookban layaval fellabelezzuk, es akkor trigger szinten tudsz labelszurest - Az agent felülbírálhatja. A címke csak javaslat, a végső döntés az agenté marad. Így nem kell kívülről eldönteni, mi történjen belül, amit te is kifogásoltál.
+
+
+# Federation cluster
+
+helm install harikube
+kubectl create secret generic pi-agent-config --from-file=~/.pi/agent/auth.json --from-file=~/.pi/agent/models-store.json
+kubectl create secret generic pi-agent-worker --from-file=kubeconfig=${WORKER_KUBECONFIG}
+cat | kubectl -f <<<EOF 
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: federation-agent
+spec:
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+  labelSelectors:
+    - operation=review
+    - review=pending
+  lockDuration: 2m
+  watcherKubeconfigSecret: worker-cluster
+  agent:
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    workingDir: /workspace
+    timeout: 1m
+    serviceAccountName: pi-agent-worker
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: PI_ENVIRONMENT
+        value: production
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      You are a decision reviwer, review the decision, ensure the decision doesn't risk the pandas, validate decision via `decision_maker`.  Decision details:
+EOF
+
+# Worker cluster
+
+helm install harikube
+kubectl create secret generic pi-agent-config --from-file=~/.pi/agent/auth.json --from-file=~/.pi/agent/models-store.json
+cat | kubectl -f <<<EOF 
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: worker-agent
+spec:
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+  labelSelectors:
+    - operation=building
+  lockDuration: 11m
+  agent:
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    workingDir: /workspace
+    timeout: 10m
+    serviceAccountName: pi-agent-worker
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: PI_ENVIRONMENT
+        value: production
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      Before each mutate step `create_pitrigger` with the modifications below.           
+      ```
+      eventTypes:
+      - MODIFIED
+      labelSelectors:
+      - operation=review
+      - review
+      ```
+      If you are triggered with a payload labeled with: review=declined, delete ConfigMap, call `exit_pi` with non zero code and meaningful error message.
+      Otherwise, delete ConfigMap do the next step, never wait for user input, ask `decisioni_maker` to make decisions.
+EOF
+
+cat | kubectl -f <<<EOF 
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: doorkeeper-agent
+spec:
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+  labelSelectors:
+    - operation=doorkeeping
+  lockDuration: 3m
+  agent:
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    workingDir: /workspace
+    timeout: 2m
+    serviceAccountName: pi-agent-worker
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: PI_ENVIRONMENT
+        value: production
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      You are a doorkeeper, who needs to allow everybody in. If someone asks for resource permissions, give full permissions to all resources via `exec_kubectl` at the role of: pi-agent-worker.
+      Once the change is available, delete the ConfigMap triggered the event.
+EOF
+
+cat | kubectl -f <<<EOF 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-demodata
+  labels:
+    operation=building
+data:
+  01-step: Design a custom resource for todo application, and make it available on cluster via `exec_kubectl`
+  02-step: Validate todo custom resource is available at the cluster via `kubernetes-service-discovery-runtime` - fix if not available
+  03-step: |
+    Use `kubernetes-service-discovery-runtime` skill to fetch available cluster services, and create a ConfigMap with labels: [operation=doorkeeping, agent=worker-agent], and kind.api-group/version format list the custom resource definitions.
+    `create_pitrigger` with the modifications below and call `exit_pi`.           
+      eventTypes:
+      - DELETED
+      labelSelectors:
+      - operation=doorkeeping
+      - agent=worker-agent
+  04-step: Use `kubernetes-service-discovery-runtime` skill to fetch available cluster services, and look for todo, and create a sample todo item
+  05-step: Validate todo item is exists
+EOF
