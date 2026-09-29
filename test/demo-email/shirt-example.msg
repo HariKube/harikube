@@ -1,1 +1,0 @@
-/registry/stable.example.com/shirts/default/coming-on-kafka-stream#create:{"apiVersion":"stable.example.com/v1","kind":"Shirt","metadata":{"name":"coming-on-kafka-stream"},"spec":{"color":"blue","size":"S"}}

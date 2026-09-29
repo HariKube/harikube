@@ -44,6 +44,8 @@ type ReaderConfig struct {
 	GroupTopics []string `json:"group_topics"`
 	Topic       string   `json:"topic"`
 	Partition   int      `json:"partition"`
+	// readers controls how many concurrent Kafka reader goroutines are started; defaults to 1 when unset or non-positive
+	Readers    int      `json:"readers"`
 	// Dialer                 *Dialer       `json:"dialer"`
 	QueueCapacity          int   `json:"queue_capacity"`
 	MinBytes               int   `json:"min_bytes"`
@@ -67,6 +69,23 @@ type ReaderConfig struct {
 	IsolationLevel        int8 `json:"isolation_level"`
 	MaxAttempts           int  `json:"max_attempts"`
 	OffsetOutOfRangeError bool `json:"offset_out_of_range_error"`
+}
+
+// GetReaderCountFromConfig decodes a base64-encoded JSON ReaderConfig and returns the configured reader count,
+// defaulting to 1 when unset or non-positive to preserve message ordering by default.
+func GetReaderCountFromConfig(configEnc string) (int, error) {
+	configBytes, err := base64.StdEncoding.DecodeString(configEnc)
+	if err != nil {
+		return 0, err
+	}
+	cfg := ReaderConfig{}
+	if err := json.Unmarshal(configBytes, &cfg); err != nil {
+		return 0, err
+	}
+	if cfg.Readers <= 0 {
+		return 1, nil
+	}
+	return cfg.Readers, nil
 }
 
 type KafkaWriter struct {
@@ -108,43 +127,58 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 		}
 	}
 
-	wg.Add(1)
-	go func() {
-		if dlqWriter != nil {
-			defer dlqWriter.Close()
-		}
-		defer wg.Done()
+	readerCount, err := GetReaderCountFromConfig(configEnc)
+	if err != nil {
+		return err
+	}
+	if readerCount <= 0 {
+		readerCount = 1
+	}
 
-		for {
-			r := kafka.NewReader(kafka.ReaderConfig{
-				Brokers:                config.Brokers,
-				GroupID:                config.GroupID,
-				GroupTopics:            config.GroupTopics,
-				Topic:                  config.Topic,
-				Partition:              config.Partition,
-				QueueCapacity:          config.QueueCapacity,
-				MinBytes:               10e3,
-				MaxBytes:               16e6,
-				MaxWait:                time.Duration(config.MaxWait),
-				ReadBatchTimeout:       time.Duration(config.ReadBatchTimeout),
-				ReadLagInterval:        time.Duration(config.ReadLagInterval),
-				HeartbeatInterval:      time.Duration(config.HeartbeatInterval),
-				CommitInterval:         time.Duration(config.CommitInterval),
-				PartitionWatchInterval: time.Duration(config.PartitionWatchInterval),
-				WatchPartitionChanges:  config.WatchPartitionChanges,
-				SessionTimeout:         time.Duration(config.SessionTimeout),
-				RebalanceTimeout:       time.Duration(config.RebalanceTimeout),
-				JoinGroupBackoff:       time.Duration(config.JoinGroupBackoff),
-				RetentionTime:          time.Duration(config.RetentionTime),
-				StartOffset:            config.StartOffset,
-				ReadBackoffMin:         time.Duration(config.ReadBackoffMin),
-				ReadBackoffMax:         time.Duration(config.ReadBackoffMax),
-				MaxAttempts:            config.MaxAttempts,
-				OffsetOutOfRangeError:  config.OffsetOutOfRangeError,
-			})
+	// Close DLQ writer when the context is done (single close for shared writer)
+	if dlqWriter != nil {
+		go func() {
+			<-ctx.Done()
+			_ = dlqWriter.Close()
+		}()
+	}
+
+	for i := 0; i < readerCount; i++ {
+		idx := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				r := kafka.NewReader(kafka.ReaderConfig{
+					Brokers:                config.Brokers,
+					GroupID:                config.GroupID,
+					GroupTopics:            config.GroupTopics,
+					Topic:                  config.Topic,
+					Partition:              config.Partition,
+					QueueCapacity:          config.QueueCapacity,
+					MinBytes:               10e3,
+					MaxBytes:               16e6,
+					MaxWait:                time.Duration(config.MaxWait),
+					ReadBatchTimeout:       time.Duration(config.ReadBatchTimeout),
+					ReadLagInterval:        time.Duration(config.ReadLagInterval),
+					HeartbeatInterval:      time.Duration(config.HeartbeatInterval),
+					CommitInterval:         time.Duration(config.CommitInterval),
+					PartitionWatchInterval: time.Duration(config.PartitionWatchInterval),
+					WatchPartitionChanges:  config.WatchPartitionChanges,
+					SessionTimeout:         time.Duration(config.SessionTimeout),
+					RebalanceTimeout:       time.Duration(config.RebalanceTimeout),
+					JoinGroupBackoff:       time.Duration(config.JoinGroupBackoff),
+					RetentionTime:          time.Duration(config.RetentionTime),
+					StartOffset:            config.StartOffset,
+					ReadBackoffMin:         time.Duration(config.ReadBackoffMin),
+					ReadBackoffMax:         time.Duration(config.ReadBackoffMax),
+					MaxAttempts:            config.MaxAttempts,
+					OffsetOutOfRangeError:  config.OffsetOutOfRangeError,
+				})
 
 			brokers := fmt.Sprintf("%v", config.Brokers)
-			logrus.Infof("Worker %s subscribed to topic: %s", brokers, config.Topic)
+			logrus.Infof("Worker %s subscribed to topic: %s [reader:%d]", brokers, config.Topic, idx)
 
 			// bounded worker pool controls in-flight validation concurrency
 			if validationPoolSize <= 0 {
@@ -406,7 +440,8 @@ func StartKafkaConsumer(ctx context.Context, wg *sync.WaitGroup, backend server.
 				logrus.Infof("Worker %s cooldown finished: %s", brokers, config.Topic)
 			}
 		}
-	}()
+		}()
+	}
 
 	return nil
 }

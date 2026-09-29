@@ -1,0 +1,122 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pi-agent-configmap-labeler
+  namespace: default
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pi-agent-configmap-labeler
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-worker
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pi-agent-configmap-labeler
+---
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: configmap-ai-labeler
+  namespace: default
+spec:
+  namespaces:
+    - default
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+    - MODIFIED
+  labelSelectors:
+    - ai.harikube.io/enabled=true
+    - ai.harikube.io/status=pending
+    - ai.harikube.io/trigger=configmap-ai-labeler
+  lockDuration: 2m
+  concurrency: 1
+  maxJobs: 1
+  agent:
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    extensions:
+      - /root/.pi/agent/extensions/decision-maker.ts
+    serviceAccountName: pi-agent-worker
+    workingDir: /workspace
+    timeout: 2m
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: PI_ENVIRONMENT
+        value: production
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      You are reviewing the triggering ConfigMap itself and must use `decision_maker` to score risk.
+      Interpret the proposal in this order:
+      1. Use `data.proposal` if present and non-empty.
+      2. Else use `data.prompt` if present and non-empty.
+      3. Else evaluate all ConfigMap data, labels, and annotations.
+      4. Return `error` only when there is not enough meaningful content to evaluate.
+
+      Call `decision_maker` to choose exactly one risk score from: 0, 25, 50, 75, 100.
+      Use this policy:
+      - 0 or 25 = approved
+      - 50, 75, or 100 = rejected
+      - if the content is missing, empty, or too ambiguous to evaluate, set result=error and risk-score=unknown
+
+      Patch ONLY the same triggering ConfigMap once.
+      Set labels:
+      - ai.harikube.io/status=done
+      - ai.harikube.io/risk-score=<0|25|50|75|100|unknown>
+      - ai.harikube.io/result=<approved|rejected|error>
+      Set annotation:
+      - ai.harikube.io/reason=<one short sentence explaining the score and result>
+
+      Decision policy:
+      - approved only for clearly safe, namespace-scoped, least-privilege behavior
+      - rejected for unsafe, over-broad, or cross-namespace behavior
+      - error only for missing or too-ambiguous review input, or if scoring cannot be completed safely
+
+      Do not create, delete, or modify any other resource.
+      Do not spend time inspecting available skills or calling discovery tools (kubernetes_service_lookup, etc.) unless directly required. Extract trigger parameters straight from the environment and proceed.
+      Be deterministic and concise.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: review-me
+  namespace: default
+  labels:
+    ai.harikube.io/enabled: "true"
+    ai.harikube.io/status: "pending"
+    ai.harikube.io/trigger: "configmap-ai-labeler"
+data:
+  proposal: |
+    Please validate this proposal for a safe namespace-restricted watcher.
+    It should watch ConfigMaps only in default, use least-privilege RBAC,
+    use `decision_maker` to assign a risk score of 0, 25, 50, 75, or 100,
+    label the triggering ConfigMap with `ai.harikube.io/risk-score`,
+    and set `ai.harikube.io/result` from that score without modifying resources outside that namespace.

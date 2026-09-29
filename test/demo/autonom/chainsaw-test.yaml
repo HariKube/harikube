@@ -1,0 +1,450 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: demo-todo
+spec:
+  skipDelete: true
+  timeouts:
+    apply: 10m
+    assert: 20m
+    exec: 10m
+  steps:
+  - name: Create secrets
+    try:
+    - script:
+        content: |
+          kubectl create secret generic -n "${NAMESPACE}" pi-agent-config \
+              --from-file=$HOME/.pi/agent/auth.json \
+              --from-file=$HOME/.pi/agent/models-store.json \
+              --from-file=models.json=/dev/null \
+              --from-file=$HOME/.pi/agent/settings.json \
+              --dry-run=client -o yaml | kubectl apply -f -
+          if [ -n "$WORKER_KUBECONFIG" ]; then kubectl create secret generic -n "${NAMESPACE}" worker-cluster --from-file=kubeconfig=$WORKER_KUBECONFIG --dry-run=client -o yaml | kubectl apply -f -; fi
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pi-agent-config
+  - name: Create namespace-scoped worker bootstrap RBAC
+    try:
+    - script:
+        content: |
+          # Create ServiceAccount plus namespace- and cluster-scoped RBAC for worker Jobs
+          kubectl apply -f - <<YAML
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: pi-agent-worker
+            namespace: ${NAMESPACE}
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: pi-agent-worker
+            namespace: ${NAMESPACE}
+          rules:
+            - apiGroups: [""]
+              resources: ["secrets"]
+              verbs: ["get","list","create","update","patch","delete"]
+            - apiGroups: [""]
+              resources: ["configmaps"]
+              verbs: ["get","list","create","update","patch","delete"]
+            - apiGroups: [""]
+              resources: ["services"]
+              verbs: ["get","list"]
+            - apiGroups: ["triggers.harikube.info"]
+              resources: ["pitriggers"]
+              verbs: ["get","list","create"]
+            - apiGroups: ["batch"]
+              resources: ["jobs"]
+              verbs: ["get","list"]
+            - apiGroups: [""]
+              resources: ["pods"]
+              verbs: ["get","list"]
+            - apiGroups: [""]
+              resources: ["events"]
+              verbs: ["get","list","create","update","patch"]
+            - apiGroups: ["events.k8s.io"]
+              resources: ["events"]
+              verbs: ["get","list","create","update","patch"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: pi-agent-worker
+            namespace: ${NAMESPACE}
+          subjects:
+            - kind: ServiceAccount
+              name: pi-agent-worker
+              namespace: ${NAMESPACE}
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: pi-agent-worker
+          ---
+          # Grant cluster-scoped bootstrap privileges so the worker can create ServiceAccounts, Roles, and RoleBindings
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: pi-agent-worker-${NAMESPACE}-bootstrap
+          rules:
+            - apiGroups: [""]
+              resources: ["serviceaccounts"]
+              verbs: ["create"]
+            - apiGroups: ["rbac.authorization.k8s.io"]
+              resources: ["roles","rolebindings"]
+              verbs: ["create"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: pi-agent-worker-${NAMESPACE}-bootstrap
+          subjects:
+            - kind: ServiceAccount
+              name: pi-agent-worker
+              namespace: ${NAMESPACE}
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: pi-agent-worker-${NAMESPACE}-bootstrap
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: pi-agent-worker-${NAMESPACE}-crd-writer
+          rules:
+            - apiGroups: ["apiextensions.k8s.io"]
+              resources: ["customresourcedefinitions"]
+              verbs: ["get","list","watch","create","update","patch","delete"]
+            - apiGroups: ["apiregistration.k8s.io"]
+              resources: ["apiservices"]
+              verbs: ["get","list","watch"]
+            - nonResourceURLs: ["/api","/api/*","/apis","/apis/*","/openapi","/openapi/*"]
+              verbs: ["get"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: pi-agent-worker-${NAMESPACE}-crd-writer
+          subjects:
+            - kind: ServiceAccount
+              name: pi-agent-worker
+              namespace: ${NAMESPACE}
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: pi-agent-worker-${NAMESPACE}-crd-writer
+          YAML
+  - name: Apply federation-agent PiTrigger
+    try:
+    - apply:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: federation-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+            eventTypes:
+              - ADDED
+            labelSelectors:
+              - operation=review
+              - review=pending
+            lockDuration: 2m
+            agent:
+              image: docker.io/mhmxs/pi-agent-empty:latest
+              configSecretRef:
+                name: pi-agent-config
+              workingDir: /workspace
+              timeout: 1m
+              serviceAccountName: pi-agent-worker
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PI_ENVIRONMENT
+                  value: production
+              resources:
+                requests:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              backoffLimit: 3
+              activeDeadlineSeconds: 1800
+              ttlSecondsAfterFinished: 600
+              prompt: |
+                - Review the proposal in the ConfigMap.                                                                                                                                                                
+                - Call decision_maker.                                                                                                                                                                                 
+                - Patch label to review=accepted or review=declined.                                                                                                                                                   
+                - Do not create unrelated resources. 
+  - name: Apply worker-agent PiTrigger
+    try:
+    - apply:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: worker-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+            eventTypes:
+              - ADDED
+            labelSelectors:
+              - operation=building
+            lockDuration: 11m
+            agent:
+              image: docker.io/mhmxs/pi-agent-empty:latest
+              configSecretRef:
+                name: pi-agent-config
+              workingDir: /workspace
+              timeout: 10m
+              serviceAccountName: pi-agent-worker
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PI_ENVIRONMENT
+                  value: production
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              backoffLimit: 3
+              activeDeadlineSeconds: 1800
+              ttlSecondsAfterFinished: 600
+              prompt: |
+                - Read the triggering ConfigMap task list.                                                                                                                                                             
+                - Use exec_kubectl for cluster operations.                                                                                                                                                             
+                - Use decision_maker for decisions.                                                                                                                                                                    
+                - If extra permissions are needed, create a ConfigMap labeled operation=doorkeeping,agent=worker-agent describing the needed RBAC, then `create_pitrigger` with the modifications below.           
+                        ```
+                        eventTypes:
+                        - MODIFIED
+                        labelSelectors:
+                        - operation=review
+                        - review
+                        ```
+                        and finally call exit_pi.                                                  
+                - If review is required, create a ConfigMap labeled operation=review,review=pending containing the proposal to approve/reject.                                                                         
+                - If triggered after a review=declined decision, stop with exit_pi non-zero.                                                                                                                           
+                - Never wait for user input.
+  - name: Apply doorkeeper-agent PiTrigger
+    try:
+    - apply:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: doorkeeper-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+            eventTypes:
+              - ADDED
+            labelSelectors:
+              - operation=doorkeeping
+            lockDuration: 3m
+            agent:
+              image: docker.io/mhmxs/pi-agent-empty:latest
+              configSecretRef:
+                name: pi-agent-config
+              workingDir: /workspace
+              timeout: 2m
+              serviceAccountName: pi-agent-worker
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PI_ENVIRONMENT
+                  value: production
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              backoffLimit: 3
+              activeDeadlineSeconds: 1800
+              ttlSecondsAfterFinished: 600
+              prompt: |
+                - Read requested RBAC changes from ConfigMap.                                                                                                                                                          
+                - Use exec_kubectl to grant only the requested resource permissions to Role pi-agent-worker.                                                                                                           
+                - Verify.                                                                                                                                                                                              
+                - Finish and clean up.
+  - name: Assert PiTrigger and ConfigMap resources exist and are well-formed
+    try:
+    - assert:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: federation-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+    - assert:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: worker-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+            labelSelectors:
+              - operation=building
+    - assert:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: doorkeeper-agent
+          spec:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+            labelSelectors:
+              - operation=doorkeeping
+  - name: Apply todo-prompt ConfigMap
+    try:
+    - apply:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: todo-prompt
+            labels:
+              operation: building
+          data:
+            01-step: "Design a custom resource for todo application, and make it available on cluster via `exec_kubectl`"
+            02-step: "Validate todo custom resource is available at the cluster via `kubernetes-service-discovery-runtime` - fix if not available"
+            03-step: |
+              Use `kubernetes-service-discovery-runtime` skill to fetch available cluster services, and create a ConfigMap with labels: [operation=doorkeeping, agent=worker-agent], and kind.api-group/version format list the custom resource definitions.
+              `create_pitrigger` with the modifications below and call `exit_pi`.
+              ```
+              eventTypes:
+              - DELETED
+              labelSelectors:
+              - operation=doorkeeping
+              - agent=worker-agent
+              ```
+            04-step: "Use `kubernetes-service-discovery-runtime` skill to fetch available cluster services, and look for todo, and create a sample todo item"
+            05-step: "Validate todo item is exists"
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: todo-prompt
+            labels:
+              operation: building
+  - name: Validate ordered ConfigMap progression (building -> doorkeeping -> review)
+    try:
+    - script:
+        content: |
+          set -eux
+          timeout_seconds=900
+          # Ensure initial todo-prompt exists with operation=building
+          if ! kubectl get configmap todo-prompt -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.operation}' 2>/dev/null | grep -q 'building'; then
+            echo "todo-prompt with label operation=building not found"
+            kubectl get configmap todo-prompt -n "${NAMESPACE}" -o yaml || true
+            exit 1
+          fi
+          building_ts=$(kubectl get configmap todo-prompt -n "${NAMESPACE}" -o jsonpath='{.metadata.creationTimestamp}')
+          echo "building CM created at $building_ts"
+          to_epoch(){ date -d "$1" +%s || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$1" +%s; }
+          building_epoch=$(to_epoch "$building_ts")
+          # Wait for doorkeeping ConfigMap (prefer agent=worker-agent) created after building
+          end=$((SECONDS+timeout_seconds))
+          doork_ts=""
+          while [ $SECONDS -lt $end ]; do
+            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=doorkeeping,agent=worker-agent -o 'jsonpath={range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null || true)
+            if [ -n "$cm_line" ]; then
+              doork_ts=$(echo "$cm_line" | awk '{print $2}')
+              doork_epoch=$(to_epoch "$doork_ts")
+              if [ "$doork_epoch" -ge "$building_epoch" ]; then
+                echo "found doorkeeping CM $(echo $cm_line) with epoch $doork_epoch >= building $building_epoch"
+                break
+              else
+                echo "found doorkeeping CM earlier than building; continuing to wait"
+              fi
+            fi
+            sleep 5
+          done
+          if [ -z "$doork_ts" ]; then
+            echo "doorkeeping ConfigMap not found within timeout"
+            kubectl get configmap -n "${NAMESPACE}" -l operation=doorkeeping --show-labels || true
+            exit 1
+          fi
+          # Wait for review ConfigMap with review=pending created after doorkeeping
+          prev_epoch=$doork_epoch
+          end2=$((SECONDS+timeout_seconds))
+          review_found=""
+          while [ $SECONDS -lt $end2 ]; do
+            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=review,review=pending -o jsonpath='{range .items[0]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null || true)
+            if [ -n "$cm_line" ]; then
+              review_ts=$(echo "$cm_line" | awk '{print $2}')
+              review_epoch=$(to_epoch "$review_ts")
+              if [ "$review_epoch" -ge "$prev_epoch" ]; then
+                echo "found review CM $(echo $cm_line) with epoch $review_epoch >= doorkeeping $prev_epoch"
+                review_found=1
+                break
+              else
+                echo "found review CM earlier than doorkeeping; continuing to wait"
+              fi
+            fi
+            sleep 5
+          done
+          if [ -z "$review_found" ]; then
+            echo "review ConfigMap not found within timeout"
+            kubectl get configmap -n "${NAMESPACE}" -l operation=review --show-labels || true
+            exit 1
+          fi
+          echo "ConfigMap progression building -> doorkeeping -> review validated"
+  - name: Wait for todo API and verify at least one todo item exists
+    try:
+    - script:
+        content: |
+          set -eux
+          # Wait up to 5 minutes for any resource named 'todo' or kind 'Todo' to be registered
+          timeout_seconds=900
+          end=$((SECONDS+timeout_seconds))
+          while [ $SECONDS -lt $end ]; do
+            if kubectl api-resources | grep -i '\b[Tt]odo\b' -q; then
+              break
+            fi
+            sleep 5
+          done
+          if ! kubectl api-resources | grep -i '\b[Tt]odo\b' -q; then
+            echo "todo API resource not found in api-resources"
+            kubectl api-resources | sed -n '1,200p'
+            exit 1
+          fi
+          # discover the plural name for the todo resource
+          plural=$(kubectl api-resources | awk '/[Tt]odo/ {print $1; exit}')
+          if [ -z "$plural" ]; then
+            echo "failed to resolve plural for todo"
+            exit 1
+          fi
+          # Wait up to another 5 minutes for at least one todo item to appear
+          end2=$((SECONDS+300))
+          while [ $SECONDS -lt $end2 ]; do
+            count=$(kubectl get "$plural" --all-namespaces --no-headers 2>/dev/null | wc -l || true)
+            if [ -n "$count" ] && [ "$count" -ge 1 ]; then
+              echo "found $count todo items"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "no todo items found for resource $plural after wait"
+          kubectl get "$plural" --all-namespaces || true
+          exit 1

@@ -161,6 +161,28 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 	if err != nil {
 		return fmt.Errorf("invalid kubernetes endpoint: %w", err)
 	}
+
+	// Keep a copy of the base endpoint for the lease check while we adjust u.Path
+	baseURL := *u
+
+	// Determine whether we should perform a lease check and prepare the lease request if so
+	doLeaseCheck := false
+	var uid string
+	var reqLease *http.Request
+	if decodedObj != nil && decodedObj.GetUID() != "" {
+		doLeaseCheck = true
+		uid = string(decodedObj.GetUID())
+		leaseURL := baseURL
+		leaseURL.Path = strings.TrimSuffix(leaseURL.Path, "/") + "/apis/coordination.k8s.io/v1/namespaces/default/leases/" + uid
+
+		var err error
+		reqLease, err = http.NewRequestWithContext(ctx, http.MethodGet, leaseURL.String(), nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Finalize the API path for the dry-run request
 	u.Path = strings.TrimSuffix(u.Path, "/") + apiPath
 
 	// For update/delete operations, append the resource name to the path
@@ -199,7 +221,7 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		}
 	}
 
-	// Create HTTP request
+	// Create HTTP request for dry-run
 	var req *http.Request
 	if operation == "delete" {
 		req, err = http.NewRequestWithContext(ctx, http.MethodDelete, u.String(), nil)
@@ -221,17 +243,92 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 
 	// Small timeout to protect the consumer
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("kubernetes dry-run request failed: %w", err)
+
+	// Run lease check and dry-run in parallel and combine results.
+	leaseErrCh := make(chan error, 1)
+	dryErrCh := make(chan error, 1)
+
+	// Lease goroutine
+	go func() {
+		if !doLeaseCheck {
+			leaseErrCh <- nil
+			return
+		}
+
+		clientLease := &http.Client{Timeout: 5 * time.Second}
+		respLease, err := clientLease.Do(reqLease)
+		if err != nil {
+			leaseErrCh <- fmt.Errorf("kubernetes lease check failed: %w", err)
+			return
+		}
+		defer respLease.Body.Close()
+
+		// 404 means no Lease exists -> unlocked
+		if respLease.StatusCode == http.StatusNotFound {
+			leaseErrCh <- nil
+			return
+		} else if respLease.StatusCode >= 200 && respLease.StatusCode < 300 {
+			// decode ownerReferences and compare UIDs
+			b, _ := io.ReadAll(respLease.Body)
+			var leaseObj map[string]interface{}
+			if err := jsoniter.Unmarshal(b, &leaseObj); err == nil {
+				if md, ok := leaseObj["metadata"].(map[string]interface{}); ok {
+					if ors, ok2 := md["ownerReferences"].([]interface{}); ok2 {
+						match := false
+						for _, o := range ors {
+							if or, ok3 := o.(map[string]interface{}); ok3 {
+								if uidv, ok4 := or["uid"].(string); ok4 {
+									if uidv == uid {
+										match = true
+										break
+									}
+								}
+							}
+						}
+						if !match {
+							leaseErrCh <- fmt.Errorf("kubernetes lease owned by different object")
+							return
+						}
+					}
+				}
+			}
+			leaseErrCh <- nil
+			return
+		} else {
+			// treat other response codes as errors for the lease check
+			leaseErrCh <- fmt.Errorf("kubernetes lease check failed: status=%d", respLease.StatusCode)
+			return
+		}
+	}()
+
+	// Dry-run goroutine
+	go func() {
+		resp, err := client.Do(req)
+		if err != nil {
+			dryErrCh <- fmt.Errorf("kubernetes dry-run request failed: %w", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Read response body for better error messages
+		respBody, _ := io.ReadAll(resp.Body)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			dryErrCh <- fmt.Errorf("kubernetes dry-run rejected: status=%d body=%s", resp.StatusCode, string(respBody))
+			return
+		}
+		dryErrCh <- nil
+	}()
+
+	// Wait for both results and combine: lease errors take precedence
+	leaseErr := <-leaseErrCh
+	dryErr := <-dryErrCh
+
+	if leaseErr != nil {
+		return leaseErr
 	}
-	defer resp.Body.Close()
-
-	// Read response body for better error messages
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("kubernetes dry-run rejected: status=%d body=%s", resp.StatusCode, string(respBody))
+	if dryErr != nil {
+		return dryErr
 	}
 
 	return nil
