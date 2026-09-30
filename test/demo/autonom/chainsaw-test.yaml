@@ -163,10 +163,9 @@ spec:
               serviceAccountName: pi-agent-worker
               imagePullPolicy: IfNotPresent
               env:
-                - name: PI_ENVIRONMENT
-                  value: production
+                - name: BILI_CMD
+                  value: ""
               resources:
-                requests:
                 requests:
                   cpu: 100m
                   memory: 128Mi
@@ -206,16 +205,13 @@ spec:
               timeout: 10m
               serviceAccountName: pi-agent-worker
               imagePullPolicy: IfNotPresent
-              env:
-                - name: PI_ENVIRONMENT
-                  value: production
               resources:
                 requests:
                   cpu: 100m
-                  memory: 128Mi
+                  memory: 512Mi
                 limits:
                   cpu: 500m
-                  memory: 256Mi
+                  memory: 1G
               backoffLimit: 3
               activeDeadlineSeconds: 1800
               ttlSecondsAfterFinished: 600
@@ -261,8 +257,8 @@ spec:
               serviceAccountName: pi-agent-worker
               imagePullPolicy: IfNotPresent
               env:
-                - name: PI_ENVIRONMENT
-                  value: production
+                - name: BILI_CMD
+                  value: ""
               resources:
                 requests:
                   cpu: 100m
@@ -353,6 +349,16 @@ spec:
         content: |
           set -eux
           timeout_seconds=900
+
+          to_epoch() {
+            local ts="$1"
+            if command -v python3 >/dev/null 2>&1; then
+              python3 -c "import datetime; print(int(datetime.datetime.fromisoformat('$ts'.replace('Z', '+00:00')).timestamp()))"
+            else
+              (date -u -d "$ts" +%s 2>/dev/null) || (date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s 2>/dev/null) || echo 0
+            fi
+          }
+
           # Ensure initial todo-prompt exists with operation=building
           if ! kubectl get configmap todo-prompt -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.operation}' 2>/dev/null | grep -q 'building'; then
             echo "todo-prompt with label operation=building not found"
@@ -361,18 +367,20 @@ spec:
           fi
           building_ts=$(kubectl get configmap todo-prompt -n "${NAMESPACE}" -o jsonpath='{.metadata.creationTimestamp}')
           echo "building CM created at $building_ts"
-          to_epoch(){ date -d "$1" +%s || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$1" +%s; }
           building_epoch=$(to_epoch "$building_ts")
+
           # Wait for doorkeeping ConfigMap (prefer agent=worker-agent) created after building
           end=$((SECONDS+timeout_seconds))
           doork_ts=""
+          doork_epoch=0
+
           while [ $SECONDS -lt $end ]; do
-            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=doorkeeping,agent=worker-agent -o 'jsonpath={range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null || true)
+            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=doorkeeping,agent=worker-agent -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null | head -n 1 || true)
             if [ -n "$cm_line" ]; then
               doork_ts=$(echo "$cm_line" | awk '{print $2}')
               doork_epoch=$(to_epoch "$doork_ts")
               if [ "$doork_epoch" -ge "$building_epoch" ]; then
-                echo "found doorkeeping CM $(echo $cm_line) with epoch $doork_epoch >= building $building_epoch"
+                echo "found doorkeeping CM $cm_line with epoch $doork_epoch >= building $building_epoch"
                 break
               else
                 echo "found doorkeeping CM earlier than building; continuing to wait"
@@ -380,22 +388,25 @@ spec:
             fi
             sleep 5
           done
+
           if [ -z "$doork_ts" ]; then
             echo "doorkeeping ConfigMap not found within timeout"
             kubectl get configmap -n "${NAMESPACE}" -l operation=doorkeeping --show-labels || true
             exit 1
           fi
+
           # Wait for review ConfigMap with review=pending created after doorkeeping
           prev_epoch=$doork_epoch
           end2=$((SECONDS+timeout_seconds))
           review_found=""
+
           while [ $SECONDS -lt $end2 ]; do
-            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=review,review=pending -o jsonpath='{range .items[0]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null || true)
+            cm_line=$(kubectl get configmap -n "${NAMESPACE}" -l operation=review,review=pending -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' 2>/dev/null | head -n 1 || true)
             if [ -n "$cm_line" ]; then
               review_ts=$(echo "$cm_line" | awk '{print $2}')
               review_epoch=$(to_epoch "$review_ts")
               if [ "$review_epoch" -ge "$prev_epoch" ]; then
-                echo "found review CM $(echo $cm_line) with epoch $review_epoch >= doorkeeping $prev_epoch"
+                echo "found review CM $cm_line with epoch $review_epoch >= doorkeeping $prev_epoch"
                 review_found=1
                 break
               else
@@ -404,47 +415,61 @@ spec:
             fi
             sleep 5
           done
+
           if [ -z "$review_found" ]; then
             echo "review ConfigMap not found within timeout"
             kubectl get configmap -n "${NAMESPACE}" -l operation=review --show-labels || true
             exit 1
           fi
           echo "ConfigMap progression building -> doorkeeping -> review validated"
-  - name: Wait for todo API and verify at least one todo item exists
-    try:
     - script:
         content: |
           set -eux
-          # Wait up to 5 minutes for any resource named 'todo' or kind 'Todo' to be registered
+
+          # Wait up to 15 minutes (900s) for any resource kind 'Todo' to be registered in the API server
           timeout_seconds=900
-          end=$((SECONDS+timeout_seconds))
+          end=$((SECONDS + timeout_seconds))
+          plural=""
+
           while [ $SECONDS -lt $end ]; do
-            if kubectl api-resources | grep -i '\b[Tt]odo\b' -q; then
+            plural=$(kubectl api-resources -o custom-columns=NAME:.name,KIND:.kind --no-headers 2>/dev/null | awk '$2 == "Todo" {print $1; exit}')
+            if [ -n "$plural" ]; then
               break
             fi
             sleep 5
           done
-          if ! kubectl api-resources | grep -i '\b[Tt]odo\b' -q; then
-            echo "todo API resource not found in api-resources"
+
+          if [ -z "$plural" ]; then
+            echo "Error: 'Todo' API resource not registered within timeout" >&2
             kubectl api-resources | sed -n '1,200p'
             exit 1
           fi
-          # discover the plural name for the todo resource
-          plural=$(kubectl api-resources | awk '/[Tt]odo/ {print $1; exit}')
-          if [ -z "$plural" ]; then
-            echo "failed to resolve plural for todo"
-            exit 1
-          fi
-          # Wait up to another 5 minutes for at least one todo item to appear
-          end2=$((SECONDS+300))
+
+          echo "Discovered resource plural: $plural"
+
+          # Wait up to 5 minutes (300s) for at least one todo item to appear across namespaces
+          end2=$((SECONDS + 300))
+          found=0
+
           while [ $SECONDS -lt $end2 ]; do
-            count=$(kubectl get "$plural" --all-namespaces --no-headers 2>/dev/null | wc -l || true)
-            if [ -n "$count" ] && [ "$count" -ge 1 ]; then
-              echo "found $count todo items"
-              exit 0
+            # Retrieve list of item names as JSON array length
+            count=$(kubectl get "$plural" --all-namespaces -o jsonpath='{.items}' 2>/dev/null | python3 -c "import sys, json; data=sys.stdin.read(); print(len(json.loads(data)) if data else 0)" 2>/dev/null || echo 0)
+
+            # Pure shell fallback if python3 is not in the runner image:
+            if [ "$count" -eq 0 ]; then
+              count=$(kubectl get "$plural" --all-namespaces --no-headers 2>/dev/null | grep -c . || true)
+            fi
+
+            if [ "$count" -ge 1 ]; then
+              echo "Successfully found $count $plural item(s)"
+              found=1
+              break
             fi
             sleep 5
           done
-          echo "no todo items found for resource $plural after wait"
-          kubectl get "$plural" --all-namespaces || true
-          exit 1
+
+          if [ "$found" -eq 0 ]; then
+            echo "Error: No items found for resource '$plural' within timeout" >&2
+            kubectl get "$plural" --all-namespaces || true
+            exit 1
+          fi

@@ -1,0 +1,131 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: configmap-ai-labeler-pitrigger
+spec:
+  template: true
+  namespaceTemplate:
+    metadata:
+      generateName: configmap-ai-labeler-
+  timeouts:
+    apply: 10m
+    assert: 2m
+    exec: 10m
+  steps:
+  - name: Create pi-agent-config secret
+    try:
+    - script:
+        content: |
+          kubectl create secret generic -n "${NAMESPACE}" pi-agent-config \
+            --from-file=$HOME/.pi/agent/auth.json \
+            --from-file=$HOME/.pi/agent/models-store.json \
+            --from-file=models.json=/dev/null \
+            --from-file=$HOME/.pi/agent/settings.json \
+            --dry-run=client -o yaml | kubectl apply -f -
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pi-agent-config
+            namespace: ($namespace)
+  - name: Apply bootstrap resources and PiTrigger
+    try:
+    - apply:
+        file: bootstrap-and-trigger.yaml
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: pi-agent-worker
+            namespace: ($namespace)
+    - assert:
+        resource:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: pi-agent-configmap-labeler
+            namespace: ($namespace)
+    - assert:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: configmap-ai-labeler
+            namespace: ($namespace)
+  - name: Wait until PiTrigger is in Running phase
+    try:
+    - assert:
+        resource:
+          apiVersion: triggers.harikube.info/v1
+          kind: PiTrigger
+          metadata:
+            name: configmap-ai-labeler
+            namespace: ($namespace)
+          status:
+            phase: Running
+  - name: Send the ConfigMap after PiTrigger is running
+    try:
+    - apply:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: review-me
+            labels:
+              ai.harikube.io/enabled: "true"
+              ai.harikube.io/status: pending
+              ai.harikube.io/trigger: configmap-ai-labeler
+          data:
+            proposal: |
+              Please validate this proposal for a safe namespace-restricted watcher.
+              It should watch ConfigMaps only in the test namespace, use least-privilege RBAC,
+              use `decision_maker` to assign a risk score of 0, 25, 50, 75, or 100,
+              label the triggering ConfigMap with `ai.harikube.io/risk-score`,
+              and set `ai.harikube.io/result` from that score without modifying resources outside that namespace.
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: review-me
+            namespace: ($namespace)
+            labels:
+              ai.harikube.io/status: done
+    - script:
+        content: |
+          set -euo pipefail
+
+          result=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.ai\.harikube\.io/result}')
+          risk=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.ai\.harikube\.io/risk-score}')
+          reason=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.annotations.ai\.harikube\.io/reason}')
+
+          case "$result" in
+            approved|rejected|error) ;;
+            *)
+              echo "unexpected result label: $result"
+              exit 1
+              ;;
+          esac
+
+          case "$risk" in
+            0|25|50|75|100|unknown) ;;
+            *)
+              echo "unexpected risk-score label: $risk"
+              exit 1
+              ;;
+          esac
+
+          case "$result:$risk" in
+            approved:0|approved:25|rejected:50|rejected:75|rejected:100|error:unknown) ;;
+            *)
+              echo "result/risk-score mapping is invalid: $result / $risk"
+              exit 1
+              ;;
+          esac
+
+          if [ -z "$reason" ]; then
+            echo "expected ai.harikube.io/reason annotation to be set"
+            exit 1
+          fi

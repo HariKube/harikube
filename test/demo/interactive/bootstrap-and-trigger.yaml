@@ -1,0 +1,226 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: serverless-kube-watch-trigger
+  name: pi-agent-worker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: serverless-kube-watch-trigger
+  name: pi-agent-worker
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - triggers.harikube.info
+  resources:
+  - pitriggers
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - patch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - patch
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: serverless-kube-watch-trigger
+  name: (join('-', ['pi-agent-worker-discovery', $namespace]))
+rules:
+- nonResourceURLs:
+  - /api
+  - /api/*
+  - /apis
+  - /apis/*
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: serverless-kube-watch-trigger
+  name: pi-agent-worker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pi-agent-worker
+subjects:
+- kind: ServiceAccount
+  name: pi-agent-worker
+  namespace: ($namespace)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: serverless-kube-watch-trigger
+  name: (join('-', ['pi-agent-worker-discovery', $namespace]))
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: (join('-', ['pi-agent-worker-discovery', $namespace]))
+subjects:
+- kind: ServiceAccount
+  name: pi-agent-worker
+  namespace: ($namespace)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pi-agent-configmap-labeler
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pi-agent-configmap-labeler
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-worker
+    namespace: ($namespace)
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pi-agent-configmap-labeler
+---
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: configmap-ai-labeler
+spec:
+  namespaces:
+    - ($namespace)
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+    - MODIFIED
+  labelSelectors:
+    - ai.harikube.io/enabled=true
+    - ai.harikube.io/status=pending
+    - ai.harikube.io/trigger=configmap-ai-labeler
+  lockDuration: 2m
+  concurrency: 1
+  maxJobs: 1
+  agent:
+    env:
+      - name: BILI_CMD
+        value: ""
+    
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    serviceAccountName: pi-agent-worker
+    workingDir: /workspace
+    timeout: 2m
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      You are reviewing the triggering ConfigMap itself to score risk.
+      Interpret the data in this order:
+      1. Use `data` if present and non-empty.
+      2. Return `error` only when there is not enough meaningful content to evaluate.
+
+      Tools:
+      1. Fetch the triggering ConfigMap JSON using:
+        kubectl get configmap $PI_TRIGGER_RESOURCE_NAME -n$PI_TRIGGER_RESOURCE_NAMESPACE -o json
+      2. Perform a single `kubectl patch` command to record the result using merge patch type:
+        kubectl patch configmap $PI_TRIGGER_RESOURCE_NAME -n$PI_TRIGGER_RESOURCE_NAMESPACE --type=merge -p "{\"metadata\": {\"labels\": {\"ai.harikube.io/status\": \"done\", \"ai.harikube.io/result\": \"<approved|rejected|error>\", \"ai.harikube.io/risk-score\": \"<0|25|50|75|100|unknown>\"}, \"annotations\": {\"ai.harikube.io/reason\": \"<one short sentence explaining the score and result>\"}}}"
+        
+      Evaluate the content directly using the decision policy below and select exactly one risk score from: 0, 25, 50, 75, 100.
+
+      Decision policy:
+      - 0 or 25 = approved (approved only for clearly safe, namespace-scoped, least-privilege behavior)
+      - 50, 75, or 100 = rejected (rejected for unsafe, over-broad, or cross-namespace behavior)
+      - if content is missing, empty, too ambiguous, or if scoring cannot be completed safely, set result=error and risk-score=unknown
+
+      Patch ONLY the same triggering ConfigMap once.
+      Set labels:
+      - ai.harikube.io/status=done
+      - ai.harikube.io/risk-score=<0|25|50|75|100|unknown>
+      - ai.harikube.io/result=<approved|rejected|error>
+      Set annotation:
+      - ai.harikube.io/reason=<one short sentence explaining the score and result>
+
+      Helpers:
+      - ConfigMap patch command template: kubectl patch configmap $PI_TRIGGER_RESOURCE_NAME -n$PI_TRIGGER_RESOURCE_NAMESPACE --type=merge -p '{"metadata": {"labels": {"ai.harikube.io/status": "done", "ai.harikube.io/result": "<approved|rejected|error>", "ai.harikube.io/risk-score": "<0|25|50|75|100|unknown>"}, "annotations": {"ai.harikube.io/reason": "<Detailed evaluation reason>"}}}'
+
+      Restrictions:
+      - Execute a single `kubectl patch` command to record the evaluation results on the ConfigMap.
+      - Do not create, delete, or modify any other resource.
+      - Extract trigger parameters straight from the environment variables ($PI_TRIGGER_RESOURCE_NAME,$PI_TRIGGER_RESOURCE_NAMESPACE) and proceed without calling discovery tools.
+      - Be deterministic and concise.

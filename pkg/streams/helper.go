@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -16,6 +17,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+var globalLeaseNamesapce = "harikube"
+
+func init() {
+	if gln, ok := os.LookupEnv("GLOBAL_LEASE_NAMESPACE"); ok {
+		globalLeaseNamesapce = gln
+	}
+}
 
 // performKubernetesDryRun sends the provided object/value to the Kubernetes API endpoint
 // using server-side dry-run (dryRun=All). It understands a small subset of storage
@@ -173,7 +182,7 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		doLeaseCheck = true
 		uid = string(decodedObj.GetUID())
 		leaseURL := baseURL
-		leaseURL.Path = strings.TrimSuffix(leaseURL.Path, "/") + "/apis/coordination.k8s.io/v1/namespaces/default/leases/" + uid
+		leaseURL.Path = strings.TrimSuffix(leaseURL.Path, "/") + "/apis/coordination.k8s.io/v1/namespaces/" + globalLeaseNamesapce + "/leases/" + uid
 
 		var err error
 		reqLease, err = http.NewRequestWithContext(ctx, http.MethodGet, leaseURL.String(), nil)
