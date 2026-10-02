@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/k3s-io/kine/pkg/util"
@@ -154,3 +155,128 @@ func TestDefaulting_AppliesToNamespacedResources(t *testing.T) {
 		t.Fatalf("namespaced resource ConfigMap should receive default namespace 'default' when missing, got %q", obj.GetNamespace())
 	}
 }
+
+// Tests for the env-driven Kafka security/dialer helper that will be
+// implemented in pkg/streams/kafka.go. These tests exercise the various
+// combinations of protocol, TLS, mTLS and SASL mechanisms the helper must
+// support. They intentionally avoid network I/O and assert on the returned
+// kafka.Dialer configuration (TLS presence, client certificates, SASL
+// mechanism name) so the production change can concentrate on wiring the
+// same helper into both consumer and producer paths.
+
+func TestBuildKafkaDialer_PLAINTEXT(t *testing.T) {
+	t.Setenv("KAFKA_PROTOCOL", "PLAINTEXT")
+	d, err := BuildKafkaDialerFromEnv()
+	if err != nil {
+		t.Fatalf("expected no error for PLAINTEXT, got: %v", err)
+	}
+	if d == nil {
+		t.Fatalf("expected non-nil dialer for PLAINTEXT")
+	}
+	if d.TLS != nil {
+		t.Fatalf("expected no TLS for PLAINTEXT, got TLS config present")
+	}
+	if d.SASLMechanism != nil {
+		t.Fatalf("expected no SASL mechanism for PLAINTEXT, got %T", d.SASLMechanism)
+	}
+}
+
+func TestBuildKafkaDialer_SSL_ServerAuth(t *testing.T) {
+	caFile, err := os.CreateTemp("", "kafka-ca-*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(caFile.Name())
+	_ = os.WriteFile(caFile.Name(), []byte("dummy-ca"), 0644)
+
+	t.Setenv("KAFKA_PROTOCOL", "SSL")
+	t.Setenv("KAFKA_TLS_CA", caFile.Name())
+	d, err := BuildKafkaDialerFromEnv()
+	if err != nil {
+		t.Fatalf("expected no error for SSL server-auth, got: %v", err)
+	}
+	if d.TLS == nil {
+		t.Fatalf("expected TLS config to be present for SSL protocol")
+	}
+	if len(d.TLS.Certificates) != 0 {
+		t.Fatalf("expected no client certificates for server-auth-only SSL, got %d", len(d.TLS.Certificates))
+	}
+}
+
+func TestBuildKafkaDialer_mTLS_ClientCert(t *testing.T) {
+	// Create placeholder client cert/key files; production will parse real PEMs.
+	certFile, err := os.CreateTemp("", "kafka-client-cert-*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(certFile.Name())
+	_ = os.WriteFile(certFile.Name(), []byte("dummy-cert"), 0644)
+
+	keyFile, err := os.CreateTemp("", "kafka-client-key-*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(keyFile.Name())
+	_ = os.WriteFile(keyFile.Name(), []byte("dummy-key"), 0600)
+
+	t.Setenv("KAFKA_PROTOCOL", "SSL")
+	t.Setenv("KAFKA_TLS_CERT", certFile.Name())
+	t.Setenv("KAFKA_TLS_KEY", keyFile.Name())
+	d, err := BuildKafkaDialerFromEnv()
+	if err != nil {
+		t.Fatalf("expected no error for mTLS setup, got: %v", err)
+	}
+	if d.TLS == nil {
+		t.Fatalf("expected TLS config to be present for mTLS")
+	}
+	if len(d.TLS.Certificates) == 0 {
+		t.Fatalf("expected client certificate to be loaded for mTLS, got 0 certificates")
+	}
+}
+
+func TestBuildKafkaDialer_SASL_SSL_PlainAndScram(t *testing.T) {
+	// PLAIN
+	t.Setenv("KAFKA_PROTOCOL", "SASL_SSL")
+	t.Setenv("KAFKA_SASL_MECHANISM", "PLAIN")
+	t.Setenv("KAFKA_SASL_USERNAME", "user")
+	t.Setenv("KAFKA_SASL_PASSWORD", "pass")
+	d, err := BuildKafkaDialerFromEnv()
+	if err != nil {
+		t.Fatalf("expected no error for SASL_SSL PLAIN, got: %v", err)
+	}
+	if d.SASLMechanism == nil {
+		t.Fatalf("expected SASL mechanism for PLAIN to be set")
+	}
+	if got := d.SASLMechanism.Name(); got != "PLAIN" {
+		t.Fatalf("expected SASL mechanism name 'PLAIN', got %q", got)
+	}
+
+	// SCRAM-SHA-256
+	t.Setenv("KAFKA_SASL_MECHANISM", "SCRAM-SHA-256")
+	// ensure username/password still present
+	if _, err := BuildKafkaDialerFromEnv(); err != nil {
+		t.Fatalf("expected no error for SASL_SSL SCRAM-SHA-256, got: %v", err)
+	}
+
+	// SCRAM-SHA-512
+	t.Setenv("KAFKA_SASL_MECHANISM", "SCRAM-SHA-512")
+	if _, err := BuildKafkaDialerFromEnv(); err != nil {
+		t.Fatalf("expected no error for SASL_SSL SCRAM-SHA-512, got: %v", err)
+	}
+}
+
+func TestBuildKafkaDialer_InvalidProtocolOrMechanism(t *testing.T) {
+	// Invalid protocol
+	t.Setenv("KAFKA_PROTOCOL", "NO_SUCH_PROTOCOL")
+	if _, err := BuildKafkaDialerFromEnv(); err == nil {
+		t.Fatalf("expected error for invalid protocol, got nil")
+	}
+
+	// Invalid mechanism
+	t.Setenv("KAFKA_PROTOCOL", "SASL_SSL")
+	t.Setenv("KAFKA_SASL_MECHANISM", "NO_SUCH_MECH")
+	if _, err := BuildKafkaDialerFromEnv(); err == nil {
+		t.Fatalf("expected error for invalid SASL mechanism, got nil")
+	}
+}
+
