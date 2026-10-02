@@ -3,8 +3,8 @@ include ../Makefile
 
 KUBECONFIG?=$(HOME)/.kube/kafka-config
 
-$(HOME)/.kube/kafka-config:
-	touch $(HOME)/.kube/kafka-config
+$(KUBECONFIG):
+	touch $(KUBECONFIG)
 
 all: build test
 
