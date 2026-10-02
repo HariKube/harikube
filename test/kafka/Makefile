@@ -2,6 +2,7 @@ export HKTPF=-kafka
 include ../Makefile
 
 KUBECONFIG?=$(HOME)/.kube/kafka-config
+export KUBECONFIG
 
 $(KUBECONFIG):
 	touch $(KUBECONFIG)
