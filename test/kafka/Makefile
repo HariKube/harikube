@@ -5,12 +5,12 @@ KUBECONFIG?=$(HOME)/.kube/kafka-config
 export KUBECONFIG
 
 $(KUBECONFIG):
-	touch $(KUBECONFIG)
+	mkdir -p $(dir $@) ; touch $@
 
 all: build test
 
 .PHONY: setup-test
-setup-test: cleanup-test
+setup-test: cleanup-test $(KUBECONFIG)
 	(cd $(MAKEFILE_DIR)kafka ; docker compose up -d)
 
 	sleep 5
