@@ -1,30 +1,22 @@
 package streams
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/k3s-io/kine/pkg/util"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
-
-var globalLeaseNamesapce = "harikube"
-
-func init() {
-	if gln, ok := os.LookupEnv("GLOBAL_LEASE_NAMESPACE"); ok {
-		globalLeaseNamesapce = gln
-	}
-}
 
 // performKubernetesDryRun sends the provided object/value to the Kubernetes API endpoint
 // using server-side dry-run (dryRun=All). It understands a small subset of storage
@@ -32,10 +24,6 @@ func init() {
 // Kubernetes API resource paths. Unsupported keys or operations return an error so
 // the message will be routed to DLQ by the caller.
 func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key string, operation string, value []byte) error {
-	if kubeEndpoint == "" {
-		return errors.New("kubernetes API endpoint not configured")
-	}
-
 	// Try to decode value into Unstructured early so object metadata can be used
 	var decodedObj *unstructured.Unstructured
 	if len(value) > 0 {
@@ -46,22 +34,28 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 	}
 
 	// Parse registry key and determine API path; prefer metadata from decoded object
-	var apiPath string
 	var name string
 	var namespace string
 
 	// Attempt to use decoded object's GVK to obtain canonical registry/api mapping
 	var registryPrefix string
-	var apiBase string
 	var namespaced bool
 
 	var resourcePlural string
+	var gvk schema.GroupVersionKind
 	if decodedObj != nil {
-		gvk := decodedObj.GroupVersionKind()
-		registryPrefix, apiBase, namespaced = util.GetResourceMappingByGVK(gvk)
-		// derive resource plural from registryPrefix when available
+		gvk = decodedObj.GroupVersionKind()
+		registryPrefix, _, namespaced = util.GetResourceMappingByGVK(gvk)
+		// derive resource plural from registryPrefix when available; for grouped CRDs
+		// registryPrefix may be like "/registry/stable.example.com/shirts" — strip optional group segment
 		if strings.HasPrefix(registryPrefix, "/registry/") {
-			resourcePlural = strings.TrimSuffix(strings.TrimPrefix(registryPrefix, "/registry/"), "/")
+			raw := strings.TrimSuffix(strings.TrimPrefix(registryPrefix, "/registry/"), "/")
+			// If the mapping contains a group segment (e.g. "stable.example.com/shirts"), use only the resource plural ("shirts")
+			if parts := strings.Split(raw, "/"); len(parts) > 1 {
+				resourcePlural = parts[len(parts)-1]
+			} else {
+				resourcePlural = raw
+			}
 		}
 	} else {
 		// Fallback: infer resource plural from the registry key and map to a best-effort GVK
@@ -88,7 +82,6 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 			"certificatesigningrequests": {Group: "certificates.k8s.io", Version: "v1", Kind: "CertificateSigningRequest"},
 		}
 
-		var gvk schema.GroupVersionKind
 		if kg, ok := known[resourcePlural]; ok {
 			gvk = kg
 		} else {
@@ -100,7 +93,7 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 			gvk = schema.GroupVersionKind{Group: "", Version: "v1", Kind: strings.Title(singular)}
 		}
 
-		registryPrefix, apiBase, namespaced = util.GetResourceMappingByGVK(gvk)
+		registryPrefix, _, namespaced = util.GetResourceMappingByGVK(gvk)
 	}
 
 	// Prefer metadata from decoded object for name/namespace when available
@@ -122,7 +115,13 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		resourcePlural = strings.Split(strings.TrimPrefix(key, "/registry/"), "/")[0]
 	}
 	// strip leading/trailing slashes and get the trailing path parts after the resource plural
-	trimPrefix := "/registry/" + resourcePlural + "/"
+	var trimPrefix string
+	if registryPrefix != "" && strings.HasPrefix(registryPrefix, "/registry/") {
+		// Use the canonical registry prefix returned by util when available (preserves group segment for matching the key)
+		trimPrefix = strings.TrimSuffix(registryPrefix, "/") + "/"
+	} else {
+		trimPrefix = "/registry/" + resourcePlural + "/"
+	}
 	rel := strings.TrimPrefix(key, trimPrefix)
 	relParts := []string{}
 	if rel != "" {
@@ -133,26 +132,24 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		// expected: /registry/<resourcePlural>/{namespace}/{name}
 		if namespace == "" {
 			if len(relParts) < 2 || relParts[0] == "" {
-				return fmt.Errorf("invalid %s key: %s", resourcePlural, key)
+				return fmt.Errorf("invalid %s key, namespace is missing for namespaced: %s", resourcePlural, key)
 			}
 			namespace = relParts[0]
 		}
 		if name == "" {
 			if len(relParts) < 2 || relParts[1] == "" {
-				return fmt.Errorf("invalid %s key: %s", resourcePlural, key)
+				return fmt.Errorf("invalid %s key, name is missing for namespaced: %s", resourcePlural, key)
 			}
 			name = relParts[1]
 		}
-		apiPath = strings.Replace(apiBase, "{namespace}", namespace, 1)
 	} else {
 		// cluster-scoped: expected: /registry/<resourcePlural>/{name}
 		if name == "" {
 			if len(relParts) < 1 || relParts[0] == "" {
-				return fmt.Errorf("invalid %s key: %s", resourcePlural, key)
+				return fmt.Errorf("invalid %s key, name is missing for clustered: %s", resourcePlural, key)
 			}
 			name = relParts[0]
 		}
-		apiPath = apiBase
 	}
 
 	// If object metadata provided name/namespace, we prefer those values
@@ -165,165 +162,135 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 		}
 	}
 
-	// Build URL
-	u, err := url.Parse(kubeEndpoint)
+	// Build REST config from kubeEndpoint: file path (kubeconfig) -> load, URL -> use as host, empty -> use KUBECONFIG only if explicitly set, otherwise fall back to in-cluster
+	var cfg *rest.Config
+	if kubeEndpoint == "" {
+		// If KUBECONFIG is explicitly provided in the environment, use that file only.
+		if kubeEnv, ok := os.LookupEnv("KUBECONFIG"); ok && kubeEnv != "" {
+			cfg2, err := clientcmd.BuildConfigFromFlags("", kubeEnv)
+			if err != nil {
+				return fmt.Errorf("failed to build kubeconfig from %s: %w", kubeEnv, err)
+			}
+			cfg = cfg2
+		} else {
+			// No explicit KUBECONFIG: skip probing defaults (e.g. ~/.kube/config) and go straight to in-cluster
+			c2, err2 := rest.InClusterConfig()
+			if err2 != nil {
+				return fmt.Errorf("failed to create in-cluster config: %w", err2)
+			}
+			cfg = c2
+		}
+	} else {
+		// detect file path
+		if fi, err := os.Stat(kubeEndpoint); err == nil && !fi.IsDir() {
+			cfg2, err := clientcmd.BuildConfigFromFlags("", kubeEndpoint)
+			if err != nil {
+				return fmt.Errorf("failed to build kubeconfig from %s: %w", kubeEndpoint, err)
+			}
+			cfg = cfg2
+		} else {
+			// treat as direct API server host
+			cfg = &rest.Config{Host: kubeEndpoint, Timeout: 10 * time.Second}
+		}
+	}
+
+	// Ensure we have a usable config
+	if cfg == nil {
+		return errors.New("no usable kubernetes client config could be created")
+	}
+
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("invalid kubernetes endpoint: %w", err)
+		return fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
-	// Keep a copy of the base endpoint for the lease check while we adjust u.Path
-	baseURL := *u
+	// Prepare GroupVersionResource
+	gvr := schema.GroupVersionResource{Group: gvk.Group, Version: gvk.Version, Resource: resourcePlural}
 
-	// Determine whether we should perform a lease check and prepare the lease request if so
-	doLeaseCheck := false
-	var uid string
-	var reqLease *http.Request
-	if decodedObj != nil && decodedObj.GetUID() != "" {
-		doLeaseCheck = true
-		uid = string(decodedObj.GetUID())
-		leaseURL := baseURL
-		leaseURL.Path = strings.TrimSuffix(leaseURL.Path, "/") + "/apis/coordination.k8s.io/v1/namespaces/" + globalLeaseNamesapce + "/leases/" + uid
-
-		var err error
-		reqLease, err = http.NewRequestWithContext(ctx, http.MethodGet, leaseURL.String(), nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Finalize the API path for the dry-run request
-	u.Path = strings.TrimSuffix(u.Path, "/") + apiPath
-
-	// For update/delete operations, append the resource name to the path
-	if operation == "update" || operation == "delete" {
-		if name == "" {
-			return fmt.Errorf("missing resource name for operation %s on key %s", operation, key)
-		}
-		u.Path = strings.TrimSuffix(u.Path, "/") + "/" + name
-	}
-
-	// Add dryRun=All query param
-	q := u.Query()
-	q.Set("dryRun", "All")
-	u.RawQuery = q.Encode()
-	// Prepare request body: try to decode into Unstructured and marshal to JSON for stability
-	var bodyBytes []byte
+	// Prepare object for create/update
+	var objToSend *unstructured.Unstructured
 	if operation == "create" || operation == "update" {
 		if decodedObj != nil {
-			if jb, err := jsoniter.Marshal(decodedObj); err == nil {
-				bodyBytes = jb
-			} else {
-				bodyBytes = value
-			}
+			objToSend = decodedObj.DeepCopy()
 		} else {
 			obj := &unstructured.Unstructured{}
 			if _, _, err := unstructuredDecoder.Decode(value, nil, obj); err != nil {
-				// fallback: send raw bytes
-				bodyBytes = value
-			} else {
-				if jb, err := jsoniter.Marshal(obj); err == nil {
-					bodyBytes = jb
-				} else {
-					bodyBytes = value
-				}
+				return fmt.Errorf("failed to decode object for dry-run: %w", err)
 			}
+			objToSend = obj
 		}
 	}
-
-	// Create HTTP request for dry-run
-	var req *http.Request
-	if operation == "delete" {
-		req, err = http.NewRequestWithContext(ctx, http.MethodDelete, u.String(), nil)
-	} else if operation == "create" {
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(bodyBytes))
-	} else if operation == "update" {
-		req, err = http.NewRequestWithContext(ctx, http.MethodPut, u.String(), bytes.NewReader(bodyBytes))
-	} else {
-		return fmt.Errorf("unsupported operation for dry-run: %s", operation)
-	}
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Accept", "application/json")
-	if operation == "create" || operation == "update" {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	// Small timeout to protect the consumer
-	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Run lease check and dry-run in parallel and combine results.
 	leaseErrCh := make(chan error, 1)
 	dryErrCh := make(chan error, 1)
 
 	// Lease goroutine
-	go func() {
-		if !doLeaseCheck {
-			leaseErrCh <- nil
-			return
-		}
-
-		clientLease := &http.Client{Timeout: 5 * time.Second}
-		respLease, err := clientLease.Do(reqLease)
-		if err != nil {
-			leaseErrCh <- fmt.Errorf("kubernetes lease check failed: %w", err)
-			return
-		}
-		defer respLease.Body.Close()
-
-		// 404 means no Lease exists -> unlocked
-		if respLease.StatusCode == http.StatusNotFound {
-			leaseErrCh <- nil
-			return
-		} else if respLease.StatusCode >= 200 && respLease.StatusCode < 300 {
-			// decode ownerReferences and compare UIDs
-			b, _ := io.ReadAll(respLease.Body)
-			var leaseObj map[string]interface{}
-			if err := jsoniter.Unmarshal(b, &leaseObj); err == nil {
-				if md, ok := leaseObj["metadata"].(map[string]interface{}); ok {
-					if ors, ok2 := md["ownerReferences"].([]interface{}); ok2 {
-						match := false
-						for _, o := range ors {
-							if or, ok3 := o.(map[string]interface{}); ok3 {
-								if uidv, ok4 := or["uid"].(string); ok4 {
-									if uidv == uid {
-										match = true
-										break
-									}
-								}
-							}
-						}
-						if !match {
-							leaseErrCh <- fmt.Errorf("kubernetes lease owned by different object")
-							return
-						}
-					}
+	if decodedObj != nil && decodedObj.GetUID() != "" {
+		uid := string(decodedObj.GetUID())
+		go func() {
+			// perform a namespaced Lease GET against the Coordination API using the default namespace
+			leaseRes := dyn.Resource(schema.GroupVersionResource{Group: "coordination.k8s.io", Version: "v1", Resource: "leases"}).Namespace("default")
+			leaseObj, err := leaseRes.Get(ctx, uid, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					leaseErrCh <- nil
+					return
+				}
+				leaseErrCh <- fmt.Errorf("kubernetes lease check failed: %w", err)
+				return
+			}
+			// Check ownerReferences
+			ors := leaseObj.GetOwnerReferences()
+			if len(ors) == 0 {
+				leaseErrCh <- nil
+				return
+			}
+			match := false
+			for _, or := range ors {
+				if string(or.UID) == uid {
+					match = true
+					break
 				}
 			}
+			if !match {
+				leaseErrCh <- fmt.Errorf("kubernetes lease owned by different object")
+				return
+			}
 			leaseErrCh <- nil
-			return
-		} else {
-			// treat other response codes as errors for the lease check
-			leaseErrCh <- fmt.Errorf("kubernetes lease check failed: status=%d", respLease.StatusCode)
-			return
-		}
-	}()
+		}()
+	} else {
+		go func() { leaseErrCh <- nil }()
+	}
 
 	// Dry-run goroutine
 	go func() {
-		resp, err := client.Do(req)
-		if err != nil {
-			dryErrCh <- fmt.Errorf("kubernetes dry-run request failed: %w", err)
-			return
+		var ri dynamic.ResourceInterface
+		if namespaced {
+			ri = dyn.Resource(gvr).Namespace(namespace)
+		} else {
+			ri = dyn.Resource(gvr)
 		}
-		defer resp.Body.Close()
 
-		// Read response body for better error messages
-		respBody, _ := io.ReadAll(resp.Body)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			dryErrCh <- fmt.Errorf("kubernetes dry-run rejected: status=%d body=%s", resp.StatusCode, string(respBody))
+		switch operation {
+		case "create":
+			if _, err := ri.Create(ctx, objToSend, metav1.CreateOptions{DryRun: []string{"All"}}); err != nil {
+				dryErrCh <- fmt.Errorf("kubernetes dry-run request failed: %w", err)
+				return
+			}
+		case "update":
+			if _, err := ri.Update(ctx, objToSend, metav1.UpdateOptions{DryRun: []string{"All"}}); err != nil {
+				dryErrCh <- fmt.Errorf("kubernetes dry-run request failed: %w", err)
+				return
+			}
+		case "delete":
+			if err := ri.Delete(ctx, name, metav1.DeleteOptions{DryRun: []string{"All"}}); err != nil {
+				dryErrCh <- fmt.Errorf("kubernetes dry-run request failed: %w", err)
+				return
+			}
+		default:
+			dryErrCh <- fmt.Errorf("unsupported operation for dry-run: %s", operation)
 			return
 		}
 		dryErrCh <- nil

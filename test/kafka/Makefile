@@ -19,6 +19,9 @@ setup-test: cleanup-test
 		-e KAFKA_INGRESS_DLQ="$$(base64 -w0 $(MAKEFILE_DIR)kafka/kafka-ingress-dlq.json)" \
 		-e KAFKA_ENGRESS="$$(base64 -w0 $(MAKEFILE_DIR)kafka/kafka-engress.json)" \
 		-e KAFKA_ENGRESS_DLQ="$$(base64 -w0 $(MAKEFILE_DIR)kafka/kafka-ingress-dlq.json)" \
+		-e KUBECONFIG=/etc/kubeconfig \
+		-v $(KUBECONFIG):/etc/kubeconfig \
+		-u 0:0 \
 		$(REPO)/$(IMAGE_NAME):$(TAG) \
 		--metrics-bind-address=0 \
 		--listen-address=0.0.0.0:23692 --endpoint='sqlite:///db/main.db?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_txlock=immediate&_stmt_cache_size=20&cache=shared'
@@ -37,10 +40,30 @@ _test:
 
 	docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic outgoing --bootstrap-server broker:29092 --max-messages 5 --timeout-ms 1000
 
+	# Produce Shirt create (existing flow)
 	cat $(MAKEFILE_DIR)kafka/shirt-example.msg | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
 
+	# Produce ConfigMap create (inline payload)
+	printf '%s' '/registry/configmaps/default/cm-from-kafka#create:{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"cm-from-kafka","namespace":"default"},"data":{"k":"v"}}' | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
+
+	# Produce ClusterRole create (inline payload)
+	printf '%s' '/registry/clusterroles/cr-from-kafka#create:{"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRole","metadata":{"name":"cr-from-kafka"},"rules":[{"apiGroups":[""],"resources":["pods"],"verbs":["get","list"]}]}' | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
+
+	# Wait for all three resources to be created
+	kubectl wait --for=create shirts/coming-on-kafka-stream --timeout=1m
+	kubectl wait --for=create configmap/cm-from-kafka -n default --timeout=1m
+	kubectl wait --for=create clusterrole/cr-from-kafka --timeout=1m
+
+	# Send duplicate Shirt to exercise DLQ (retain existing duplicate behavior)
 	cat $(MAKEFILE_DIR)kafka/shirt-example.msg | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
-	docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic dlq --bootstrap-server broker:29092 --max-messages 2 --timeout-ms 100000
+
+	# Expect one message on DLQ (the duplicate Shirt)
+	docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic dlq --bootstrap-server broker:29092 --max-messages 1 --timeout-ms 100000
+
+	# Cleanup created resources (bounded)
+	kubectl delete shirts coming-on-kafka-stream ||:
+	kubectl delete configmap cm-from-kafka -n default ||:
+	kubectl delete clusterrole cr-from-kafka ||:
 
 _cleanup-test:
 	@(cd $(MAKEFILE_DIR)kafka ; docker compose down) ||:

@@ -18,8 +18,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	certv1 "k8s.io/api/certificates/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -185,6 +187,10 @@ func GetObjectByKey(key string) runtime.Object {
 		return &corev1.Node{}
 	case strings.HasPrefix(key, "/registry/certificatesigningrequests/"):
 		return &certv1.CertificateSigningRequest{}
+	case strings.HasPrefix(key, "/registry/clusterroles/"):
+		return &rbacv1.ClusterRole{}
+	case strings.HasPrefix(key, "/registry/clusterrolebindings/"):
+		return &rbacv1.ClusterRoleBinding{}
 	default:
 		return &metav1.PartialObjectMetadata{}
 	}
@@ -192,33 +198,70 @@ func GetObjectByKey(key string) runtime.Object {
 
 func GetResourceMappingByGVK(gvk schema.GroupVersionKind) (registryPrefix, apiBasePath string, namespaced bool) {
 	switch {
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Pod":
+	case gvk.Group == "" && gvk.Kind == "Pod":
 		return "/registry/pods/", "/api/v1/namespaces/{namespace}/pods", true
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Event":
+	case gvk.Group == "" && gvk.Kind == "Event":
 		return "/registry/events/", "/api/v1/namespaces/{namespace}/events", true
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Secret":
+	case gvk.Group == "" && gvk.Kind == "Secret":
 		return "/registry/secrets/", "/api/v1/namespaces/{namespace}/secrets", true
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Namespace":
+	case gvk.Group == "" && gvk.Kind == "Namespace":
 		return "/registry/namespaces/", "/api/v1/namespaces", false
-	case gvk.Group == "apps" && gvk.Version == "v1" && gvk.Kind == "ReplicaSet":
+	case gvk.Group == "apps" && gvk.Kind == "ReplicaSet":
 		return "/registry/replicasets/", "/apis/apps/v1/namespaces/{namespace}/replicasets", true
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "ReplicationController":
+	case gvk.Group == "" && gvk.Kind == "ReplicationController":
 		return "/registry/replicationcontrollers/", "/api/v1/namespaces/{namespace}/replicationcontrollers", true
-	case gvk.Group == "batch" && gvk.Version == "v1" && gvk.Kind == "Job":
+	case gvk.Group == "batch" && gvk.Kind == "Job":
 		return "/registry/jobs/", "/apis/batch/v1/namespaces/{namespace}/jobs", true
-	case gvk.Group == "" && gvk.Version == "v1" && gvk.Kind == "Node":
+	case gvk.Group == "" && gvk.Kind == "Node":
 		// historically referred to as "minions" in the etcd registry
 		return "/registry/minions/", "/api/v1/nodes", false
-	case gvk.Group == "certificates.k8s.io" && gvk.Version == "v1" && gvk.Kind == "CertificateSigningRequest":
+	case gvk.Group == "certificates.k8s.io" && gvk.Kind == "CertificateSigningRequest":
 		return "/registry/certificatesigningrequests/", "/apis/certificates.k8s.io/v1/certificatesigningrequests", false
+	// grouped cluster-scoped exceptions (e.g., RBAC cluster-scoped kinds)
+	case gvk.Group == "rbac.authorization.k8s.io" && gvk.Kind == "ClusterRole":
+		// ClusterRoles are stored under the ungrouped registry prefix
+		return "/registry/clusterroles/", "/apis/rbac.authorization.k8s.io/v1/clusterroles", false
+	case gvk.Group == "rbac.authorization.k8s.io" && gvk.Kind == "ClusterRoleBinding":
+		// ClusterRoleBindings are stored under the ungrouped registry prefix
+		return "/registry/clusterrolebindings/", "/apis/rbac.authorization.k8s.io/v1/clusterrolebindings", false
 	default:
 		// best-effort fallback to handle other kinds (CRDs, etc.)
 		plural := pluralize.Plural(strings.ToLower(gvk.Kind))
 		if gvk.Group == "" {
 			return "/registry/" + plural + "/", "/api/" + gvk.Version + "/namespaces/{namespace}/" + plural, true
 		}
-		return "/registry/" + plural + "/", "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/{namespace}/" + plural, true
+		// default for grouped resources is namespaced unless explicitly handled above
+		return "/registry/" + gvk.Group + "/" + plural + "/", "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/{namespace}/" + plural, true
 	}
+}
+
+func etcdKeyForGroupVersionKind(gvk schema.GroupVersionKind, namespace string, mapping *meta.RESTMapping) (string, error) {
+	if mapping == nil {
+		return "", fmt.Errorf("nil mapping")
+	}
+
+	resource := mapping.Resource.Resource
+	if resource == "" {
+		return "", fmt.Errorf("mapping missing resource")
+	}
+
+	key := "/registry/"
+	if mapping.Resource.Group != "" {
+		// non-core resources include the group segment
+		key += mapping.Resource.Group + "/" + resource + "/"
+	} else {
+		// core resources omit the group segment
+		key += resource + "/"
+	}
+
+	// include namespace for namespaced resources
+	if mapping.Scope == meta.RESTScopeNamespace {
+		if namespace != "" {
+			key += namespace + "/"
+		}
+	}
+
+	return key, nil
 }
 
 func GetUIDByObject(obj runtime.Object) (uid types.UID) {
