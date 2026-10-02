@@ -194,6 +194,7 @@ func BuildKafkaDialerFromEnv() (*kafka.Dialer, error) {
 	}
 }
 
+
 type KafkaWriter struct {
 	Addr            string `json:"addr"`
 	Topic           string `json:"topic"`
@@ -558,21 +559,22 @@ func NewKafkaProducer(ctx context.Context, configEnc string, dlqConfigEnc string
 		name: fmt.Sprintf("%s", config.Addr),
 		ctx:  ctx,
 		writer: kafka.NewWriter(kafka.WriterConfig{
-			Brokers:     []string{config.Addr},
-			Topic:       config.Topic,
-			Balancer:    &kafka.LeastBytes{},
-			MaxAttempts: config.MaxAttempts,
+			Brokers:                []string{config.Addr},
+			Topic:                  config.Topic,
+			Balancer:               &kafka.LeastBytes{},
+			MaxAttempts:            config.MaxAttempts,
 
-			BatchSize:        config.BatchSize,
-			BatchBytes:       int(config.BatchBytes),
-			BatchTimeout:     time.Duration(config.BatchTimeout),
-			ReadTimeout:      time.Duration(config.ReadTimeout),
-			WriteTimeout:     time.Duration(config.WriteTimeout),
-			RequiredAcks:     config.RequiredAcks,
-			Async:            config.Async,
-			CompressionCodec: compress.Compression(config.Compression).Codec(),
 
-			Dialer: dialer,
+			BatchSize:              config.BatchSize,
+			BatchBytes:             int(config.BatchBytes),
+			BatchTimeout:           time.Duration(config.BatchTimeout),
+			ReadTimeout:            time.Duration(config.ReadTimeout),
+			WriteTimeout:           time.Duration(config.WriteTimeout),
+			RequiredAcks:           config.RequiredAcks,
+			Async:                  config.Async,
+			CompressionCodec:       compress.Compression(config.Compression).Codec(),
+
+			Dialer:                 dialer,
 		}),
 	}
 
