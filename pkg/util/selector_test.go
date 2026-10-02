@@ -4,15 +4,15 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/api/rbac/v1"
 )
 
 func TestEtcdKeyForGroupVersionKind_NilMappingReturnsError(t *testing.T) {
 	gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"}
 	if _, err := etcdKeyForGroupVersionKind(gvk, "default", nil); err == nil {
-		t.Fatalf("expected error for nil mapping, got nil")
+		t.Fatal("expected error for nil mapping, got nil")
 	}
 }
 
