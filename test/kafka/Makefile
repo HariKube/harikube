@@ -1,6 +1,11 @@
 export HKTPF=-kafka
 include ../Makefile
 
+KUBECONFIG?=$(HOME)/.kube/config
+
+$(HOME)/.kube/config:
+	touch $(HOME)/.kube/config
+
 all: build test
 
 .PHONY: setup-test

@@ -255,7 +255,7 @@ func performKubernetesDryRun(ctx context.Context, kubeEndpoint string, key strin
 				}
 			}
 			if !match {
-				leaseErrCh <- fmt.Errorf("kubernetes lease owned by different object")
+				leaseErrCh <- errors.New("kubernetes lease owned by different object")
 				return
 			}
 			leaseErrCh <- nil

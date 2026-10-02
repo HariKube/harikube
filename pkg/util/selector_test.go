@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -95,12 +95,12 @@ func TestGetResourceMappingByGVK_RBACClusterRoleBinding_UngroupedKey(t *testing.
 
 func TestGetObjectByKey_ClusterRoleAndBindingKeysResolveToRBACObjects(t *testing.T) {
 	obj := GetObjectByKey("/registry/clusterroles/foo")
-	if _, ok := obj.(*v1.ClusterRole); !ok {
+	if _, ok := obj.(*rbacv1.ClusterRole); !ok {
 		t.Fatalf("expected GetObjectByKey to return *rbacv1.ClusterRole for /registry/clusterroles/ key, got %T", obj)
 	}
 
 	obj = GetObjectByKey("/registry/clusterrolebindings/bar")
-	if _, ok := obj.(*v1.ClusterRoleBinding); !ok {
+	if _, ok := obj.(*rbacv1.ClusterRoleBinding); !ok {
 		t.Fatalf("expected GetObjectByKey to return *rbacv1.ClusterRoleBinding for /registry/clusterrolebindings/ key, got %T", obj)
 	}
 }

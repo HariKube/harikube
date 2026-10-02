@@ -109,7 +109,7 @@ func TestPerformKubernetesDryRun_InvalidKubeconfig_CausesError(t *testing.T) {
 	// validation failure and DLQ the message.
 	err = performKubernetesDryRun(context.Background(), "/nonexistent/does-not-exist-kubeconfig", "/registry/pods/default/create", "create", b)
 	if err == nil {
-		t.Fatalf("expected performKubernetesDryRun to return an error when kubeconfig cannot be loaded, got nil")
+		t.Fatal("expected performKubernetesDryRun to return an error when kubeconfig cannot be loaded, got nil")
 	}
 }
 
@@ -171,10 +171,10 @@ func TestBuildKafkaDialer_PLAINTEXT(t *testing.T) {
 		t.Fatalf("expected no error for PLAINTEXT, got: %v", err)
 	}
 	if d == nil {
-		t.Fatalf("expected non-nil dialer for PLAINTEXT")
+		t.Fatal("expected non-nil dialer for PLAINTEXT")
 	}
 	if d.TLS != nil {
-		t.Fatalf("expected no TLS for PLAINTEXT, got TLS config present")
+		t.Fatal("expected no TLS for PLAINTEXT, got TLS config present")
 	}
 	if d.SASLMechanism != nil {
 		t.Fatalf("expected no SASL mechanism for PLAINTEXT, got %T", d.SASLMechanism)
@@ -196,7 +196,7 @@ func TestBuildKafkaDialer_SSL_ServerAuth(t *testing.T) {
 		t.Fatalf("expected no error for SSL server-auth, got: %v", err)
 	}
 	if d.TLS == nil {
-		t.Fatalf("expected TLS config to be present for SSL protocol")
+		t.Fatal("expected TLS config to be present for SSL protocol")
 	}
 	if len(d.TLS.Certificates) != 0 {
 		t.Fatalf("expected no client certificates for server-auth-only SSL, got %d", len(d.TLS.Certificates))
@@ -227,10 +227,10 @@ func TestBuildKafkaDialer_mTLS_ClientCert(t *testing.T) {
 		t.Fatalf("expected no error for mTLS setup, got: %v", err)
 	}
 	if d.TLS == nil {
-		t.Fatalf("expected TLS config to be present for mTLS")
+		t.Fatal("expected TLS config to be present for mTLS")
 	}
 	if len(d.TLS.Certificates) == 0 {
-		t.Fatalf("expected client certificate to be loaded for mTLS, got 0 certificates")
+		t.Fatal("expected client certificate to be loaded for mTLS, got 0 certificates")
 	}
 }
 
@@ -245,7 +245,7 @@ func TestBuildKafkaDialer_SASL_SSL_PlainAndScram(t *testing.T) {
 		t.Fatalf("expected no error for SASL_SSL PLAIN, got: %v", err)
 	}
 	if d.SASLMechanism == nil {
-		t.Fatalf("expected SASL mechanism for PLAIN to be set")
+		t.Fatal("expected SASL mechanism for PLAIN to be set")
 	}
 	if got := d.SASLMechanism.Name(); got != "PLAIN" {
 		t.Fatalf("expected SASL mechanism name 'PLAIN', got %q", got)
@@ -269,14 +269,13 @@ func TestBuildKafkaDialer_InvalidProtocolOrMechanism(t *testing.T) {
 	// Invalid protocol
 	t.Setenv("KAFKA_PROTOCOL", "NO_SUCH_PROTOCOL")
 	if _, err := BuildKafkaDialerFromEnv(); err == nil {
-		t.Fatalf("expected error for invalid protocol, got nil")
+		t.Fatal("expected error for invalid protocol, got nil")
 	}
 
 	// Invalid mechanism
 	t.Setenv("KAFKA_PROTOCOL", "SASL_SSL")
 	t.Setenv("KAFKA_SASL_MECHANISM", "NO_SUCH_MECH")
 	if _, err := BuildKafkaDialerFromEnv(); err == nil {
-		t.Fatalf("expected error for invalid SASL mechanism, got nil")
+		t.Fatal("expected error for invalid SASL mechanism, got nil")
 	}
 }
-

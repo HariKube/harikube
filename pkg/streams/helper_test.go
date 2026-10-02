@@ -77,7 +77,7 @@ func TestPerformKubernetesDryRun_LeaseOwnedByDifferent(t *testing.T) {
 
 	err = performKubernetesDryRun(context.Background(), srv.URL, "/registry/pods/some-ns/test-pod", "create", b)
 	if err == nil {
-		t.Fatalf("expected error due to lease owned by different object, got nil")
+		t.Fatal("expected error due to lease owned by different object, got nil")
 	}
 }
 
@@ -227,7 +227,7 @@ func TestPerformKubernetesDryRun_ConcurrentLeaseAndDryRunStarted(t *testing.T) {
 	case <-leaseStarted:
 		// started
 	case <-time.After(2 * time.Second):
-		t.Fatalf("lease request did not start in time")
+		t.Fatal("lease request did not start in time")
 	}
 
 	// Now ensure the dry-run request is started while the lease request is still blocked.
@@ -237,7 +237,7 @@ func TestPerformKubernetesDryRun_ConcurrentLeaseAndDryRunStarted(t *testing.T) {
 	case <-dryRunStarted:
 		// success: dry-run started while lease was still in-flight
 	case <-time.After(200 * time.Millisecond):
-		t.Fatalf("dry-run request did not start while lease request was in-flight; requests may be serial")
+		t.Fatal("dry-run request did not start while lease request was in-flight; requests may be serial")
 	}
 
 	// Allow both handlers to finish and collect result
@@ -478,7 +478,7 @@ func TestPerformKubernetesDryRun_NoDefaultKubeconfigFallsBackToInCluster(t *test
 	// Execute with empty kubeEndpoint so the code tries kubeconfig then in-cluster.
 	err = performKubernetesDryRun(context.Background(), "", "/registry/stable.example.com/shirts/default/coming-on-kafka-stream", "create", b)
 	if err == nil {
-		t.Fatalf("expected error when neither kubeconfig nor in-cluster config are available, got nil")
+		t.Fatal("expected error when neither kubeconfig nor in-cluster config are available, got nil")
 	}
 
 	// The error should indicate an in-cluster config failure (fallback path),
@@ -516,7 +516,7 @@ func TestPerformKubernetesDryRun_EmptyKubeconfigFallsBackToInCluster(t *testing.
 	// creation fails, rather than treating this as a successful no-op.
 	err = performKubernetesDryRun(context.Background(), "", "/registry/pods/some-ns/test-pod", "create", b)
 	if err == nil {
-		t.Fatalf("expected error when kubeconfig is empty and client config cannot be created, got nil")
+		t.Fatal("expected error when kubeconfig is empty and client config cannot be created, got nil")
 	}
 }
 

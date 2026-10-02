@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,10 +19,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	certv1 "k8s.io/api/certificates/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	meta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -237,12 +238,12 @@ func GetResourceMappingByGVK(gvk schema.GroupVersionKind) (registryPrefix, apiBa
 
 func etcdKeyForGroupVersionKind(gvk schema.GroupVersionKind, namespace string, mapping *meta.RESTMapping) (string, error) {
 	if mapping == nil {
-		return "", fmt.Errorf("nil mapping")
+		return "", errors.New("nil mapping")
 	}
 
 	resource := mapping.Resource.Resource
 	if resource == "" {
-		return "", fmt.Errorf("mapping missing resource")
+		return "", errors.New("mapping missing resource")
 	}
 
 	key := "/registry/"

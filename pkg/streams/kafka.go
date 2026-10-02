@@ -162,12 +162,12 @@ func BuildKafkaDialerFromEnv() (*kafka.Dialer, error) {
 			switch mech {
 			case "PLAIN":
 				if username == "" || password == "" {
-					return nil, fmt.Errorf("PLAIN mechanism requires username and password")
+					return nil, errors.New("PLAIN mechanism requires username and password")
 				}
 				d.SASLMechanism = plain.Mechanism{Username: username, Password: password}
 			case "SCRAM-SHA-256":
 				if username == "" || password == "" {
-					return nil, fmt.Errorf("SCRAM mechanism requires username and password")
+					return nil, errors.New("SCRAM mechanism requires username and password")
 				}
 				mech, err := scram.Mechanism(scram.SHA256, username, password)
 				if err != nil {
@@ -176,7 +176,7 @@ func BuildKafkaDialerFromEnv() (*kafka.Dialer, error) {
 				d.SASLMechanism = mech
 			case "SCRAM-SHA-512":
 				if username == "" || password == "" {
-					return nil, fmt.Errorf("SCRAM mechanism requires username and password")
+					return nil, errors.New("SCRAM mechanism requires username and password")
 				}
 				mech512, err := scram.Mechanism(scram.SHA512, username, password)
 				if err != nil {
@@ -193,7 +193,6 @@ func BuildKafkaDialerFromEnv() (*kafka.Dialer, error) {
 		return nil, fmt.Errorf("unsupported KAFKA_PROTOCOL: %s", proto)
 	}
 }
-
 
 type KafkaWriter struct {
 	Addr            string `json:"addr"`
@@ -559,22 +558,21 @@ func NewKafkaProducer(ctx context.Context, configEnc string, dlqConfigEnc string
 		name: fmt.Sprintf("%s", config.Addr),
 		ctx:  ctx,
 		writer: kafka.NewWriter(kafka.WriterConfig{
-			Brokers:                []string{config.Addr},
-			Topic:                  config.Topic,
-			Balancer:               &kafka.LeastBytes{},
-			MaxAttempts:            config.MaxAttempts,
+			Brokers:     []string{config.Addr},
+			Topic:       config.Topic,
+			Balancer:    &kafka.LeastBytes{},
+			MaxAttempts: config.MaxAttempts,
 
+			BatchSize:        config.BatchSize,
+			BatchBytes:       int(config.BatchBytes),
+			BatchTimeout:     time.Duration(config.BatchTimeout),
+			ReadTimeout:      time.Duration(config.ReadTimeout),
+			WriteTimeout:     time.Duration(config.WriteTimeout),
+			RequiredAcks:     config.RequiredAcks,
+			Async:            config.Async,
+			CompressionCodec: compress.Compression(config.Compression).Codec(),
 
-			BatchSize:              config.BatchSize,
-			BatchBytes:             int(config.BatchBytes),
-			BatchTimeout:           time.Duration(config.BatchTimeout),
-			ReadTimeout:            time.Duration(config.ReadTimeout),
-			WriteTimeout:           time.Duration(config.WriteTimeout),
-			RequiredAcks:           config.RequiredAcks,
-			Async:                  config.Async,
-			CompressionCodec:       compress.Compression(config.Compression).Codec(),
-
-			Dialer:                 dialer,
+			Dialer: dialer,
 		}),
 	}
 
