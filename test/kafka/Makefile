@@ -1,10 +1,10 @@
 export HKTPF=-kafka
 include ../Makefile
 
-KUBECONFIG?=$(HOME)/.kube/config
+KUBECONFIG?=$(HOME)/.kube/kafka-config
 
-$(HOME)/.kube/config:
-	touch $(HOME)/.kube/config
+$(HOME)/.kube/kafka-config:
+	touch $(HOME)/.kube/kafka-config
 
 all: build test
 
