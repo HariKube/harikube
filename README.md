@@ -97,9 +97,7 @@ http_reqs......................: 429180 119.106435/s
 | Datastore | 6 DBs × 3 replicas × 0.5GB = 9GB | 5 etcd clusters × 3 members × 1-2GB = 15-30GB (est.) | 8-20 etcd clusters × 3 × 1-2GB = 24-120GB (est.) |
 | Objects per cluster | 200k | ~40k | ~10-25k |
 | **Total RAM** | **~21GB** | **~55-70GB** | **~90-280GB** |
-| Capacity used at 200k | Light: ~0.5GB of data across 6 DBs, a few % of each (est.) | ~80% of OOM point per cluster (est.) | ~20-50%, bought with extra clusters |
 | **200k is…** | **Nothing** (a rounding error for 6 SQL DBs) | **The limit** (next step = new cluster) | **Past comfortable**, so you pay with clusters |
-| Status | Measured | Estimate | Rough guess |
 
 Open-Source edition is designed to interface with a single backend database instance at a time, which can become a performance bottleneck as your cluster grows. To address this, our advanced editions introduce various data routing capabilities. This allows you to distribute workloads across multiple database backends simultaneously, ensuring horizontal scalability for even the most demanding environments. Check out which [edition](https://harikube.info/editions/) fit's to your use-case.
 
