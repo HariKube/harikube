@@ -15,12 +15,13 @@ _deploy:
 	kubectl wait -n cert-manager --for=jsonpath='{.status.readyReplicas}'=1 deployment/cert-manager-webhook --timeout=2m
 	sleep 5
 
-	kubectl apply -f https://github.com/HariKube/api-extension/releases/download/rc-v1.0.0-3/bundle-config-rc-v1.0.0-3.yaml
-	kubectl apply -f https://github.com/HariKube/api-extension/releases/download/rc-v1.0.0-3/bundle-rc-v1.0.0-3.yaml
-	kubectl apply -f https://github.com/HariKube/serverless-kube-watch-trigger/releases/download/rc-v1.0.0-8/bundle-rc-v1.0.0-8.yaml
+	kubectl apply -f https://github.com/HariKube/api-extension/releases/download/rc-v1.0.0-5/bundle-config-rc-v1.0.0-5.yaml
+	kubectl apply -f https://github.com/HariKube/api-extension/releases/download/rc-v1.0.0-5/bundle-rc-v1.0.0-5.yaml
+	kubectl apply -f https://github.com/HariKube/serverless-kube-watch-trigger/releases/download/rc-v1.0.0-11/bundle-rc-v1.0.0-11.yaml
 
 	kubectl wait -n harikube --for=jsonpath='{.status.readyReplicas}'=1 deployment/api-extension-controller-manager --timeout=2m
 	kubectl wait -n serverless-kube-watch-trigger-system --for=jsonpath='{.status.readyReplicas}'=1 deployment/serverless-kube-watch-trigger-controller-manager --timeout=2m
+	kubectl wait --for=condition=Available apiservice/v1.apiserver.api-extension.harikube.info --timeout=5m
 
 _test:
 	chainsaw test --test-dir interactive

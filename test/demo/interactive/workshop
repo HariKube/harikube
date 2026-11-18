@@ -1,0 +1,47 @@
+make -C .. setup-test _deploy
+
+investigate available api extensions, aggregation apis, crds and services on the live cluster (short answer)
+do you find any service related to trigger ai agents based on the findings? (short answer)
+give me a simple example pitrigger based on registered cluster crd (short answer)
+
+kubectl apply -f bootstrap-and-trigger.yaml
+kubectl get cm -o yaml -w
+docker exec -w /opt/kafka/bin broker ./kafka-console-consumer.sh --from-beginning --topic outgoing --bootstrap-server broker:29092 | grep review-me
+k9s -n default -c pod
+
+printf '%s' '/registry/configmaps/default/review-me-'$(date +"%s")'#create:{"apiVersion": "v1","kind": "ConfigMap","metadata": {"name": "review-me","labels": {"ai.harikube.io/enabled": "true","ai.harikube.io/status": "pending"}},"data": {"proposal": "Please validate this proposal for a safe namespace-restricted watcher.\nIt should watch ConfigMaps only in the test namespace, use least-privilege RBAC,\nuse `decision_maker` to assign a risk score of 0, 25, 50, 75, or 100,\nlabel the triggering ConfigMap with `ai.harikube.io/risk-score`,\nand set `ai.harikube.io/result` from that score without modifying resources outside that namespace."}}' | docker exec -i -w /opt/kafka/bin broker ./kafka-console-producer.sh --topic incoming --bootstrap-server broker:29092 --reader-property "parse.key=true" --reader-property "key.separator=:"
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: review-me
+  labels:
+    ai.harikube.io/enabled: "true"
+    ai.harikube.io/status: pending
+data:
+  proposal: |
+    Please validate this proposal for a safe namespace-restricted watcher.
+    It should watch ConfigMaps only in the test namespace, use least-privilege RBAC,
+    use `decision_maker` to assign a risk score of 0, 25, 50, 75, or 100,
+    label the triggering ConfigMap with `ai.harikube.io/risk-score`,
+    and set `ai.harikube.io/result` from that score without modifying resources outside that namespace.
+
+---
+
+does the live cluster has any solution to classify elements, or create transactions? (short answer)
+what are the options to implement this business logic on Kubernetes? Pros and Cons (short answer)
+what are the advantages of implementing as a validation webhook? (short answer)
+what are the advantages of implementing as a controller? (short answer)
+what are the advantages of implementing as an aggregation api? (short answer)
+can i enforce the labels on config maps? (short answer)
+what are the advantages of admission policies and custom mutation webhooks? (short answer)
+
+---
+
+which programming languages are capable to solve the problem? (short answer)
+how to initialize a kubebuilder project? (short answer)
+...
+
+---
+
+remove the trigger called `configmap-ai-labeler` and deploy the project

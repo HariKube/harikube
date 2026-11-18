@@ -3,10 +3,8 @@ kind: Test
 metadata:
   name: configmap-ai-labeler-pitrigger
 spec:
-  template: true
-  namespaceTemplate:
-    metadata:
-      generateName: configmap-ai-labeler-
+  skipDelete: true
+  namespace: default
   timeouts:
     apply: 10m
     assert: 2m
@@ -16,7 +14,7 @@ spec:
     try:
     - script:
         content: |
-          kubectl create secret generic -n "${NAMESPACE}" pi-agent-config \
+          kubectl create secret generic -n default pi-agent-config \
             --from-file=$HOME/.pi/agent/auth.json \
             --from-file=$HOME/.pi/agent/models-store.json \
             --from-file=models.json=/dev/null \
@@ -28,7 +26,7 @@ spec:
           kind: Secret
           metadata:
             name: pi-agent-config
-            namespace: ($namespace)
+            namespace: default
   - name: Apply bootstrap resources and PiTrigger
     try:
     - apply:
@@ -39,21 +37,21 @@ spec:
           kind: ServiceAccount
           metadata:
             name: pi-agent-worker
-            namespace: ($namespace)
+            namespace: default
     - assert:
         resource:
           apiVersion: rbac.authorization.k8s.io/v1
           kind: Role
           metadata:
             name: pi-agent-configmap-labeler
-            namespace: ($namespace)
+            namespace: default
     - assert:
         resource:
           apiVersion: triggers.harikube.info/v1
           kind: PiTrigger
           metadata:
             name: configmap-ai-labeler
-            namespace: ($namespace)
+            namespace: default
   - name: Wait until PiTrigger is in Running phase
     try:
     - assert:
@@ -62,7 +60,7 @@ spec:
           kind: PiTrigger
           metadata:
             name: configmap-ai-labeler
-            namespace: ($namespace)
+            namespace: default
           status:
             phase: Running
   - name: Send the ConfigMap after PiTrigger is running
@@ -76,7 +74,6 @@ spec:
             labels:
               ai.harikube.io/enabled: "true"
               ai.harikube.io/status: pending
-              ai.harikube.io/trigger: configmap-ai-labeler
           data:
             proposal: |
               Please validate this proposal for a safe namespace-restricted watcher.
@@ -90,16 +87,16 @@ spec:
           kind: ConfigMap
           metadata:
             name: review-me
-            namespace: ($namespace)
+            namespace: default
             labels:
               ai.harikube.io/status: done
     - script:
         content: |
           set -euo pipefail
 
-          result=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.ai\.harikube\.io/result}')
-          risk=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.labels.ai\.harikube\.io/risk-score}')
-          reason=$(kubectl get configmap review-me -n "${NAMESPACE}" -o jsonpath='{.metadata.annotations.ai\.harikube\.io/reason}')
+          result=$(kubectl get configmap review-me -n default -o jsonpath='{.metadata.labels.ai\.harikube\.io/result}')
+          risk=$(kubectl get configmap review-me -n default -o jsonpath='{.metadata.labels.ai\.harikube\.io/risk-score}')
+          reason=$(kubectl get configmap review-me -n default -o jsonpath='{.metadata.annotations.ai\.harikube\.io/reason}')
 
           case "$result" in
             approved|rejected|error) ;;

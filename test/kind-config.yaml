@@ -28,3 +28,5 @@ nodes:
     - hostPath: ../kubeadm
       containerPath: /etc/kubernetes/patches
       readOnly: true
+    - hostPath: ../..
+      containerPath: /workspace
