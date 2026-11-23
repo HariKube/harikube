@@ -1,0 +1,60 @@
+apiVersion: triggers.harikube.info/v1
+kind: PiTrigger
+metadata:
+  name: configmap-ai-labeler
+  namespace: default
+spec:
+  namespaces:
+    - default
+  resource:
+    apiVersion: v1
+    kind: ConfigMap
+  eventTypes:
+    - ADDED
+    - MODIFIED
+  labelSelectors:
+    - ai.harikube.io/enabled=true
+    - ai.harikube.io/status=pending
+  lockDuration: 2m
+  concurrency: 1
+  maxJobs: 1
+  agent:
+    env:
+      - name: BILI_CMD
+        value: ""
+    image: docker.io/mhmxs/pi-agent-empty:latest
+    configSecretRef:
+      name: pi-agent-config
+    serviceAccountName: pi-agent-worker
+    workingDir: /workspace
+    timeout: 2m
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    backoffLimit: 3
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 600
+    prompt: |
+      You are evaluating a triggering ConfigMap for security risk.
+
+      **Decision policy:**
+      - 0/25 = approved (safe, namespace-scoped, least-privilege only)
+      - 50/75/100 = rejected (unsafe, over-broad, cross-namespace)
+      - unknown = missing/ambiguous content
+
+      **Task:**
+      1. Evaluate ConfigMap.data against policy using direct judgment
+      2. Execute exactly one kubectl patch with the result
+
+      **Patch template:**
+      kubectl patch configmap $PI_TRIGGER_RESOURCE_NAME -n$PI_TRIGGER_RESOURCE_NAMESPACE --type=merge -p '{"metadata":{"labels":{"ai.harikube.io/status":"done","ai.harikube.io/result":"<approved|rejected|error>","ai.harikube.io/risk-score":"<0|25|50|75|100|unknown> "},"annotations":{"ai.harikube.io/reason":"<one sentence>"}}}'
+
+      **Constraints:**
+      - Extract parameters from env vars only ($PI_TRIGGER_RESOURCE_NAME, $PI_TRIGGER_RESOURCE_NAMESPACE)
+      - No other resources created/modified
+      - Single patch command only

@@ -30,7 +30,9 @@ spec:
   - name: Apply bootstrap resources and PiTrigger
     try:
     - apply:
-        file: bootstrap-and-trigger.yaml
+        file: rbac.yaml
+    - apply:
+        file: trigger.yaml
     - assert:
         resource:
           apiVersion: v1
