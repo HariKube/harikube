@@ -33,27 +33,6 @@ spec:
         file: rbac.yaml
     - apply:
         file: trigger.yaml
-    - assert:
-        resource:
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: pi-agent-worker
-            namespace: default
-    - assert:
-        resource:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: Role
-          metadata:
-            name: pi-agent-configmap-labeler
-            namespace: default
-    - assert:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: configmap-ai-labeler
-            namespace: default
   - name: Wait until PiTrigger is in Running phase
     try:
     - assert:
@@ -79,8 +58,9 @@ spec:
           data:
             proposal: |
               Please validate this proposal for a safe namespace-restricted watcher.
+              Load the `decision-maker` skill to understand decision-maker API for federation gate decisions.
               It should watch ConfigMaps only in the test namespace, use least-privilege RBAC,
-              use `decision_maker` to assign a risk score of 0, 25, 50, 75, or 100,
+              assign a risk score of 0, 25, 50, 75, or 100,
               label the triggering ConfigMap with `ai.harikube.io/risk-score`,
               and set `ai.harikube.io/result` from that score without modifying resources outside that namespace.
     - assert:

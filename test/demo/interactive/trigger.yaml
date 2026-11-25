@@ -15,7 +15,6 @@ spec:
   labelSelectors:
     - ai.harikube.io/enabled=true
     - ai.harikube.io/status=pending
-  lockDuration: 2m
   concurrency: 1
   maxJobs: 1
   agent:
@@ -25,17 +24,19 @@ spec:
     image: docker.io/mhmxs/pi-agent-empty:latest
     configSecretRef:
       name: pi-agent-config
+    provider: github-copilot
+    model: kimi-k3
     serviceAccountName: pi-agent-worker
     workingDir: /workspace
-    timeout: 2m
+    timeout: 5m
     imagePullPolicy: IfNotPresent
     resources:
       requests:
         cpu: 100m
-        memory: 256Mi
+        memory: 512Mi
       limits:
         cpu: 500m
-        memory: 512Mi
+        memory: 1G
     backoffLimit: 3
     activeDeadlineSeconds: 1800
     ttlSecondsAfterFinished: 600

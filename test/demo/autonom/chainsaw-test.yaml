@@ -1,665 +1,78 @@
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:
-  name: async-federation-with-configmap-state
+  name: configmap-prompt-pitrigger
 spec:
-  skipDelete: false
+  skipDelete: true
   namespace: default
   timeouts:
     apply: 10m
-    assert: 5m
+    assert: 2m
     exec: 10m
   steps:
-  - name: Cleanup old resources
+  - name: Create pi-agent-config secret
     try:
     - script:
         content: |
-          kubectl delete cm -n default -l type=state,workflow=todo-build --ignore-not-found 2>&1
-          sleep 2
-  - name: Create secrets
-    try:
-    - script:
-        content: |
-          kubectl create secret generic -n "${NAMESPACE}" pi-agent-config \
-              --from-file=$HOME/.pi/agent/auth.json \
-              --from-file=$HOME/.pi/agent/models-store.json \
-              --from-file=models.json=/dev/null \
-              --from-file=$HOME/.pi/agent/settings.json \
-              --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic -n default pi-agent-config \
+            --from-file=$HOME/.pi/agent/auth.json \
+            --from-file=$HOME/.pi/agent/models-store.json \
+            --from-file=models.json=/dev/null \
+            --from-file=$HOME/.pi/agent/settings.json \
+            --dry-run=client -o yaml | kubectl apply -f -
     - assert:
         resource:
           apiVersion: v1
           kind: Secret
           metadata:
             name: pi-agent-config
-
-  - name: Create namespace-scoped worker bootstrap RBAC
-    try:
-    - script:
-        content: |
-          kubectl apply -f - <<YAML
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: pi-agent-worker
-            namespace: ${NAMESPACE}
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: Role
-          metadata:
-            name: pi-agent-worker
-            namespace: ${NAMESPACE}
-          rules:
-            - apiGroups: [""]
-              resources: ["secrets"]
-              verbs: ["get","list","create","update","patch","delete"]
-            - apiGroups: [""]
-              resources: ["configmaps"]
-              verbs: ["get","list","create","update","patch","delete"]
-            - apiGroups: [""]
-              resources: ["services"]
-              verbs: ["get","list"]
-            - apiGroups: ["triggers.harikube.info"]
-              resources: ["pitriggers"]
-              verbs: ["get","list","create"]
-            - apiGroups: ["batch"]
-              resources: ["jobs"]
-              verbs: ["get","list"]
-            - apiGroups: [""]
-              resources: ["pods"]
-              verbs: ["get","list"]
-            - apiGroups: [""]
-              resources: ["events"]
-              verbs: ["get","list","create","update","patch"]
-            - apiGroups: ["events.k8s.io"]
-              resources: ["events"]
-              verbs: ["get","list","create","update","patch"]
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: pi-agent-worker
-            namespace: ${NAMESPACE}
-          subjects:
-            - kind: ServiceAccount
-              name: pi-agent-worker
-              namespace: ${NAMESPACE}
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: Role
-            name: pi-agent-worker
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRole
-          metadata:
-            name: pi-agent-worker-crd-admin
-            labels:
-              app: pi-agent
-          rules:
-            - apiGroups: ["apiextensions.k8s.io"]
-              resources: ["customresourcedefinitions"]
-              verbs: ["get","list","watch","create","update","patch","delete"]
-            - apiGroups: ["apiregistration.k8s.io"]
-              resources: ["apiservices"]
-              verbs: ["get","list","watch"]
-            - nonResourceURLs: ["/api","/api/*","/apis","/apis/*","/openapi","/openapi/*"]
-              verbs: ["get"]
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRoleBinding
-          metadata:
-            name: pi-agent-worker-crd-admin-${NAMESPACE}
-            labels:
-              app: pi-agent
-          subjects:
-            - kind: ServiceAccount
-              name: pi-agent-worker
-              namespace: ${NAMESPACE}
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: pi-agent-worker-crd-admin
-          YAML
-
-  - name: Apply worker-agent-phase1 PiTrigger
+            namespace: default
+  - name: Apply bootstrap resources and PiTrigger
     try:
     - apply:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: worker-agent-phase1
-          spec:
-            resource:
-              apiVersion: v1
-              kind: ConfigMap
-            eventTypes:
-              - ADDED
-            labelSelectors:
-              - phase=worker-phase1
-            lockDuration: 30s
-            sendInitialEvents: true
-            agent:
-              image: docker.io/mhmxs/pi-agent-empty:latest
-              configSecretRef:
-                name: pi-agent-config
-              workingDir: /workspace
-              timeout: 15m
-              serviceAccountName: pi-agent-worker
-              imagePullPolicy: IfNotPresent
-              resources:
-                requests:
-                  cpu: 500m
-                  memory: 512Mi
-                limits:
-                  cpu: 2000m
-                  memory: 1Gi
-              backoffLimit: 3
-              activeDeadlineSeconds: 1800
-              ttlSecondsAfterFinished: 600
-              prompt: |
-                #!/bin/bash
-                set -eux
-                
-                # Phase 1: Create CRD + State CM + Approval Request + Phase 2 Trigger
-                
-                # Step 1: Create Todo CRD
-                echo "Step 1: Creating Todo CRD..."
-                kubectl apply -f - <<'CRDYAML'
-                apiVersion: apiextensions.k8s.io/v1
-                kind: CustomResourceDefinition
-                metadata:
-                  name: todos.example.com
-                spec:
-                  group: example.com
-                  scope: Namespaced
-                  names:
-                    kind: Todo
-                    plural: todos
-                  versions:
-                  - name: v1
-                    served: true
-                    storage: true
-                    schema:
-                      openAPIV3Schema:
-                        type: object
-                        properties:
-                          spec:
-                            type: object
-                            properties:
-                              title:
-                                type: string
-                              description:
-                                type: string
-                              completed:
-                                type: boolean
-                CRDYAML
-                kubectl get crd todos.example.com || exit 1
-                echo "✓ CRD created"
-                
-                # Step 2: Create workflow state ConfigMap
-                echo "Step 2: Creating workflow state ConfigMap..."
-                STATE_CM="workflow-state-$(date +%s)"
-                NOW=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-                echo "DEBUG: Creating state CM with name: $STATE_CM"
-                kubectl create configmap "$STATE_CM" -n default \
-                  --from-literal=completed-steps="00" \
-                  --from-literal=status="RUNNING" \
-                  --from-literal=phase1-status="IN_PROGRESS" \
-                  --from-literal=approval-status="PENDING" \
-                  --from-literal=crd-created="todos.example.com" \
-                  --from-literal=created-at="$NOW" \
-                  --dry-run=client -o yaml | \
-                kubectl apply -f - || { echo "ERROR: kubectl apply failed for state CM"; exit 1; }
-                sleep 1
-                kubectl label configmap "$STATE_CM" -n default phase=worker-state type=state workflow=todo-build review=pending run-id="$(date +%s)" --overwrite || { echo "ERROR: kubectl label failed"; exit 1; }
-                echo "DEBUG: State CM after labeling:"
-                kubectl get configmap "$STATE_CM" -n default || { echo "ERROR: STATE_CM not found after label"; exit 1; }
-                echo "✓ State ConfigMap created: $STATE_CM"
-                
-                # Step 3: Create approval ConfigMap + request federation approval
-                echo "Step 3: Creating approval ConfigMap..."
-                APPROVAL_CM="approval-create-todos-$(date +%s)"
-                PROPOSAL="Create a sample Todo instance. This demonstrates the async workflow pattern where Phase 1 creates the CRD, requests approval from federation-agent, and Phase 2 creates the actual Todo instance after approval is granted."
-                kubectl create configmap "$APPROVAL_CM" -n default \
-                  --from-literal=proposal="$PROPOSAL" \
-                  --from-literal=workflow-state-ref="$STATE_CM" \
-                  --dry-run=client -o yaml | \
-                kubectl apply -f -
-                sleep 1
-                kubectl label configmap "$APPROVAL_CM" -n default operation=review review=pending phase=worker-state --overwrite
-                kubectl get configmap "$APPROVAL_CM" -n default
-                echo "✓ Approval ConfigMap created: $APPROVAL_CM"
-                
-                # Step 4: Create Phase 2 PiTrigger (will be triggered when federation-agent patches review=accepted)
-                echo "Step 4: Creating Phase 2 PiTrigger..."
-                cat > /tmp/phase2-trigger.yaml <<'TRIGGERAYAML'
-                apiVersion: triggers.harikube.info/v1
-                kind: PiTrigger
-                metadata:
-                  name: worker-agent-phase2-continuation-TASK_ID
-                  namespace: default
-                spec:
-                  resource:
-                    apiVersion: v1
-                    kind: ConfigMap
-                  eventTypes:
-                    - MODIFIED
-                  labelSelectors:
-                    - review=accepted
-                  lockDuration: 1m
-                  sendInitialEvents: false
-                  agent:
-                    image: docker.io/mhmxs/pi-agent-empty:latest
-                    configSecretRef:
-                      name: pi-agent-config
-                    workingDir: /workspace
-                    timeout: 10m
-                    serviceAccountName: pi-agent-worker
-                    imagePullPolicy: IfNotPresent
-                    env:
-                      - name: PI_PROVIDER
-                        value: "github-copilot"
-                      - name: PI_MODEL
-                        value: "claude-haiku-4.5"
-                    resources:
-                      requests:
-                        cpu: 500m
-                        memory: 512Mi
-                      limits:
-                        cpu: 2000m
-                        memory: 1Gi
-                    backoffLimit: 3
-                    activeDeadlineSeconds: 1800
-                    ttlSecondsAfterFinished: 600
-                    prompt: |
-                      # Phase 2: Create Todo and Mark Complete
-                      STATE_CM=$(kubectl get configmap -l type=state,review=accepted -n default -o jsonpath='{.items[-1].metadata.name}')
-                      echo "State CM: $STATE_CM"
-                      # Create todo instance directly
-                      kubectl create todo sample-todo-1 -n default --dry-run=client -o yaml | sed 's/metadata:/metadata:\n  labels:\n    app: test/' | kubectl apply -f -
-                      sleep 2
-                      # Verify
-                      kubectl get todo sample-todo-1 -n default || exit 1
-                      # Patch state to COMPLETED
-                      kubectl patch configmap "$STATE_CM" -n default --type merge -p '{"data":{"status":"COMPLETED"}}'
-                      echo "✓ Complete"
-                      exit 0
-                TRIGGERAYAML
-                
-                # Customize trigger name with unique ID based on state CM
-                TASK_ID=$(echo "$STATE_CM" | sed 's/workflow-state-//')
-                echo "TASK_ID extracted: $TASK_ID"
-                sed -i "s/worker-agent-phase2-continuation-TASK_ID/worker-agent-phase2-continuation-$TASK_ID/g" /tmp/phase2-trigger.yaml
-                echo "Trigger YAML after sed:" && grep 'name:' /tmp/phase2-trigger.yaml | head -1
-                
-                echo "Applying Phase 2 trigger..."
-                kubectl apply -f /tmp/phase2-trigger.yaml || { echo "kubectl apply failed"; cat /tmp/phase2-trigger.yaml; exit 1; }
-                sleep 2
-                echo "Verifying Phase 2 trigger was created..."
-                kubectl get pitrigger worker-agent-phase2-continuation-"$TASK_ID" -n default -o yaml | head -20 || { echo "Phase 2 trigger NOT FOUND"; kubectl get pitrigger -n default; exit 1; }
-                echo "✓ Phase 2 trigger created: worker-agent-phase2-continuation-$TASK_ID"
-                
-                # Step 5: Exit Phase 1
-                echo "✓ Phase 1 complete: CRD created, state persisted, approval requested, Phase 2 trigger ready"
-                echo "Waiting for federation approval..."
-                echo "Phase 2 will be triggered automatically when federation-agent patches review=accepted"
-                exit 0
-
-  - name: Apply federation-agent PiTrigger
-    try:
+        file: rbac.yaml
     - apply:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: federation-agent
-          spec:
-            resource:
-              apiVersion: v1
-              kind: ConfigMap
-            eventTypes:
-              - ADDED
-            labelSelectors:
-              - operation=review,review=pending
-            lockDuration: 30s
-            sendInitialEvents: true
-            agent:
-              image: docker.io/mhmxs/pi-agent-empty:latest
-              configSecretRef:
-                name: pi-agent-config
-              workingDir: /workspace
-              timeout: 2m
-              serviceAccountName: pi-agent-worker
-              imagePullPolicy: IfNotPresent
-              env:
-                - name: PI_PROVIDER
-                  value: "github-copilot"
-                - name: PI_MODEL
-                  value: "claude-haiku-4.5"
-              resources:
-                requests:
-                  cpu: 200m
-                  memory: 256Mi
-                limits:
-                  cpu: 1000m
-                  memory: 512Mi
-              backoffLimit: 3
-              activeDeadlineSeconds: 1800
-              ttlSecondsAfterFinished: 600
-              prompt: |
-                # Federation-Agent: Review & Approve Proposal via decision_maker
-                # This agent is triggered when an approval ConfigMap is created
-                # Task: Use decision_maker tool to decide YES/NO, then patch the ConfigMaps
-                
-                # Step 1: Extract approval ConfigMap name and read data
-                APPROVAL_CM=$(kubectl get configmap -l operation=review,review=pending -n default -o jsonpath='{.items[-1].metadata.name}')
-                echo "Approval ConfigMap: $APPROVAL_CM"
-                
-                # Step 2: Extract proposal and state CM reference
-                PROPOSAL=$(kubectl get configmap "$APPROVAL_CM" -n default -o jsonpath='{.data.proposal}')
-                STATE_CM=$(kubectl get configmap "$APPROVAL_CM" -n default -o jsonpath='{.data.workflow-state-ref}')
-                echo "Proposal: $PROPOSAL"
-                echo "State CM: $STATE_CM"
-                
-                # Step 3: Call decision_maker with the proposal
-                echo "Calling decision_maker..."
-                DECISION=$(pi decision-maker --question "Should we approve this proposal?" --context "$PROPOSAL")
-                echo "Decision result: $DECISION"
-                
-                # Step 4: Check if decision is YES (approve) or NO (reject)
-                if echo "$DECISION" | grep -iq 'yes\|approve\|accept\|agreed'; then
-                  echo "Decision: APPROVED"
-                  LABEL="accepted"
-                else
-                  echo "Decision: REJECTED"
-                  LABEL="declined"
-                fi
-                
-                # Step 5: Patch BOTH ConfigMaps with the decision label
-                echo "Patching ConfigMaps..."
-                kubectl patch configmap "$APPROVAL_CM" -n default -p '{"metadata":{"labels":{"review":"'"$LABEL"'"}}}'  
-                kubectl patch configmap "$STATE_CM" -n default -p '{"metadata":{"labels":{"review":"'"$LABEL"'","phase":"worker-state"}}}'
-                
-                # Step 6: Verify patches were applied
-                echo "Verifying patches..."
-                kubectl get configmap "$APPROVAL_CM" -n default -o jsonpath='{.metadata.labels.review}'
-                echo "Approval patch verified"
-                kubectl get configmap "$STATE_CM" -n default -o jsonpath='{.metadata.labels.review}'
-                echo "State CM patch verified"
-                
-                echo "✓ Federation-agent complete"
-                exit 0
-
-  - name: Apply doorkeeper-agent PiTrigger
-    try:
-    - apply:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: doorkeeper-agent
-          spec:
-            resource:
-              apiVersion: v1
-              kind: ConfigMap
-            eventTypes:
-              - ADDED
-            labelSelectors:
-              - operation=doorkeeping
-            lockDuration: 1m
-            agent:
-              image: docker.io/mhmxs/pi-agent-empty:latest
-              configSecretRef:
-                name: pi-agent-config
-              workingDir: /workspace
-              timeout: 2m
-              serviceAccountName: pi-agent-worker
-              imagePullPolicy: IfNotPresent
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-                limits:
-                  cpu: 500m
-                  memory: 512Mi
-              backoffLimit: 3
-              activeDeadlineSeconds: 1800
-              ttlSecondsAfterFinished: 600
-              prompt: |
-                You are a doorkeeper/permission-granter agent. Your task is to grant RBAC permissions.
-                
-                TASK:
-                1. You were triggered by a ConfigMap with label: operation=doorkeeping
-                2. Read the ConfigMap data.requested-rules field
-                   - It contains YAML-formatted Kubernetes RBAC rules
-                   - Example format:
-                     apiGroups: ["example.com"]
-                     resources: ["todos"]
-                     verbs: ["create","get","list"]
-                3. Parse the YAML rules
-                4. Get the current pi-agent-worker Role:
-                   kubectl get role pi-agent-worker -n $NAMESPACE -o json > /tmp/role.json
-                5. Merge the new rules into .rules[] array
-                   - Use jq or manual JSON editing
-                   - Example: jq '.rules += [NEW_RULE]' /tmp/role.json
-                6. Apply the updated role:
-                   kubectl apply -f /tmp/role.json
-                7. Verify the new rules are present:
-                   kubectl get role pi-agent-worker -n $NAMESPACE -o yaml | grep -A10 "example.com"
-                8. Exit with code 0 on success, code 1 on failure
-
-  - name: Assert all PiTriggers are created
+        file: trigger.yaml
+  - name: Wait until PiTrigger is in Running phase
     try:
     - assert:
         resource:
           apiVersion: triggers.harikube.info/v1
           kind: PiTrigger
           metadata:
-            name: worker-agent-phase1
-    - assert:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: federation-agent
-    - assert:
-        resource:
-          apiVersion: triggers.harikube.info/v1
-          kind: PiTrigger
-          metadata:
-            name: doorkeeper-agent
-
-  - name: Create trigger ConfigMap (phase=worker-phase1)
+            name: worker-agent
+            namespace: default
+          status:
+            phase: Running
+  - name: Send the ConfigMap after PiTrigger is running
     try:
     - apply:
         resource:
           apiVersion: v1
           kind: ConfigMap
           metadata:
-            name: workflow-trigger
+            name: todo-prompt
             labels:
-              phase: worker-phase1
+              operation: building
           data:
-            workflow-id: "async-federation-demo"
-            initiator: "chainsaw-test"
-
-  - name: Wait for Todo CRD to be created (timeout 3m)
-    try:
-    - script:
-        content: |
-          set -eux
-          timeout 180 bash -c '
-            until kubectl get crd todos.example.com 2>/dev/null; do
-              sleep 2
-            done
-          ' || {
-            echo "ERROR: Todo CRD not created within timeout"
-            kubectl get crd | grep -i todo || true
-            exit 1
-          }
-          echo "✓ Todo CRD created"
-
-  - name: Wait for approval ConfigMap (timeout 2m)
-    try:
-    - script:
-        content: |
-          set -eux
-          timeout 120 bash -c '
-            until kubectl get configmap -n "${NAMESPACE}" -l operation=review 2>/dev/null | grep -q approval; do
-              sleep 2
-            done
-          ' || {
-            echo "ERROR: Approval ConfigMap not created within timeout"
-            exit 1
-          }
-          echo "✓ Approval ConfigMap created by worker-phase1"
-
-  - name: Wait for approval result (federation-agent decision via decision_maker)
-    try:
-    - script:
-        content: |
-          set -eux
-          timeout 300 bash -c '
-            until kubectl get configmap -n "${NAMESPACE}" -l operation=review -o jsonpath="{.items[-1].metadata.labels.review}" 2>/dev/null | grep -qE "accepted|declined"; do
-              sleep 2
-            done
-          ' || {
-            echo "ERROR: Approval decision not patched within timeout"
-            kubectl get configmap -n "${NAMESPACE}" -l operation=review -o yaml || true
-            exit 1
-          }
-          result=$(kubectl get configmap -n "${NAMESPACE}" -l operation=review -o jsonpath="{.items[-1].metadata.labels.review}")
-          echo "✓ Approval result: $result"
-          if [ "$result" = "declined" ]; then
-            echo "Proposal was rejected by federation-agent"
-            exit 1
-          fi
-
-  - name: Wait for workflow state ConfigMap (Phase 1 artifact)
-    try:
-    - script:
-        content: |
-          set -eux
-          timeout 120 bash -c '
-            until kubectl get configmap -n "${NAMESPACE}" -l type=state -o name 2>/dev/null | grep -q workflow-state; do
-              sleep 2
-            done
-          ' || {
-            echo "ERROR: Workflow state ConfigMap not found within timeout"
-            kubectl get configmap -n "${NAMESPACE}" -l phase=worker-state -o name || true
-            exit 1
-          }
-          echo "✓ Workflow state ConfigMap created by worker-phase1"
-          STATE_CM=$(kubectl get configmap -n "${NAMESPACE}" -l type=state -o jsonpath='{range .items[*]}{.metadata.name}\t{.metadata.creationTimestamp}\n{end}' | sort -k2 | tail -1 | awk '{print $1}' 2>/dev/null)
-          if [ -z "$STATE_CM" ]; then
-            echo "ERROR: Could not extract STATE_CM name"
-            exit 1
-          fi
-          echo "STATE_CM=$STATE_CM" > /tmp/state-cm.sh
-          echo "State ConfigMap name: $STATE_CM"
-          source /tmp/state-cm.sh
-          kubectl get configmap -n "${NAMESPACE}" "$STATE_CM" -o yaml | head -20
-
-  - name: Wait for Phase 2 completion (timeout 5m)
-    try:
-    - script:
-        content: |
-          set -eux
-          source /tmp/state-cm.sh
-          echo "Waiting for Phase 2 completion..."
-          echo "State CM: $STATE_CM"
-          timeout 320 bash -c '
-            for i in {1..160}; do
-              STATUS=$(kubectl get configmap -n "${NAMESPACE}" "$STATE_CM" -o jsonpath="{.data.status}" 2>/dev/null || echo "CM_NOT_FOUND")
-              echo "[$(date +%H:%M:%S)] Poll #$i: status=$STATUS"
-              if [ "$STATUS" = "COMPLETED" ]; then
-                echo "✓ Workflow COMPLETED"
-                exit 0
-              fi
-              sleep 2
-            done
-            echo "ERROR: Workflow did not complete within timeout"
-            exit 1
-          ' || {
-            echo "DIAGNOSTIC: Final state CM:"
-            kubectl get configmap -n "${NAMESPACE}" "$STATE_CM" -o yaml || echo "State CM not found"
-            echo "DIAGNOSTIC: All jobs:"
-            kubectl get job -n default -o wide 2>/dev/null || echo "No jobs found"
-            exit 1
-          }
-
-  - name: Wait for Todo instance (timeout 3m)
-    try:
-    - script:
-        content: |
-          set -eux
-          timeout 180 bash -c '
-            until kubectl get todos --all-namespaces --no-headers 2>/dev/null | grep -q . ; do
-              sleep 2
-            done
-          ' || {
-            echo "ERROR: No todo instances found within timeout"
-            exit 1
-          }
-          count=$(kubectl get todos --all-namespaces --no-headers 2>/dev/null | wc -l)
-          echo "✓ Found $count todo instance(s)"
-
-  - name: Final validation - full async + federation pattern
-    try:
-    - script:
-        content: |
-          set -eux
-          source /tmp/state-cm.sh
-          
-          echo "======================================================================"
-          echo "ASYNC + FEDERATION PATTERN VALIDATION"
-          echo "======================================================================"
-          
-          echo ""
-          echo "1. Todo CRD Created:"
-          kubectl get crd todos.example.com -o wide
-          
-          echo ""
-          echo "2. Todo Instance Created:"
-          kubectl get todos --all-namespaces -o wide
-          
-          echo ""
-          echo "3. Workflow State ConfigMap:"
-          kubectl get configmap -n default "$STATE_CM" -o yaml | head -40
-          
-          echo ""
-          echo "4. Approval ConfigMap (federation-agent approved via decision_maker):"
-          kubectl get configmap -n default -l operation=review -o yaml | grep -A5 "labels:"
-          
-          echo ""
-          echo "======================================================================"
-          echo "✅ FULL ASYNC + FEDERATION TEST PASSED"
-          echo "======================================================================"
-          echo ""
-          echo "Workflow components verified:"
-          echo "✓ Worker Phase 1: Created CRD + state ConfigMap + approval request"
-          echo "✓ State Persistence: ConfigMap with completed-steps, status fields"
-          echo "✓ Federation-Agent: Called decision_maker for approval"
-          echo "✓ Continuation Trigger: Spawned Phase 2 automatically"
-          echo "✓ Worker Phase 2: Created Todo instance + updated state"
-          echo ""
-          echo "Pattern characteristics:"
-          echo "✓ Fully async (no polling loops)"
-          echo "✓ Event-driven (continuation via label change)"
-          echo "✓ State persisted between phases (ConfigMap)"
-          echo "✓ Decision-making via decision_maker (LLM)"
-          echo "✓ Error handling via RBAC escalation (doorkeeper-agent)"
-          echo ""
-          echo "======================================================================"
-    finally:
-    - script:
-        content: |
-          set -x
-          echo "=== CLEANUP ==="
-          kubectl delete configmap -n "${NAMESPACE}" -l operation --ignore-not-found || true
-          kubectl delete configmap -n "${NAMESPACE}" -l phase --ignore-not-found || true
-          kubectl delete pitrigger -n "${NAMESPACE}" --all --ignore-not-found || true
-          kubectl delete crd todos.example.com --ignore-not-found || true
-          kubectl delete todos --all --all-namespaces --ignore-not-found || true
-          echo "✓ Cleanup completed"
+            01-step: "Design a custom resource for todo application `todos.todo.harikube.info`, and make it available on cluster via `exec_kubectl`"
+            02-step: "Validate todo custom resource is available at the cluster via `kubernetes-service-discovery-runtime` - otherwise ensure it is available"
+            03-step: "Use `kubernetes-service-discovery-runtime` skill to fetch available cluster services, and look for todo, and create a sample todo item"
+            04-step: "Validate todo item is exists"
+    - sleep:
+        duration: 10m
+    - assert:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: todo-prompt
+            namespace: default
+            labels:
+              operation: builded
+    - assert:
+        resource:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: todos.todo.harikube.info

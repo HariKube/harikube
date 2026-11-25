@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pi-agent-worker
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pi-agent-doorkeeper
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pi-agent-worker
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get","list","create","update","patch","delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get","list","create","update","patch","delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get","list"]
+  - apiGroups: ["triggers.harikube.info"]
+    resources: ["pitriggers"]
+    verbs: ["get","list","create"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get","list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get","list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get","list","create","update","patch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs: ["get","list","create","update","patch"]
+  - apiGroups: ["apiserver.api-extension.harikube.info"]
+    resources: ["decisionrequests"]
+    verbs: ["create","get","list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles","rolebindings"]
+    verbs: ["get","list","update","patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pi-agent-worker
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-worker
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pi-agent-worker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pi-agent-doorkeeper
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-doorkeeper
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pi-agent-worker
+---
+# Trusted demo only: the doorkeeper needs to delegate permissions for arbitrary
+# future custom resources and verify worker access through impersonation.
+# This grants unrestricted cluster control to the doorkeeper, not the worker.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pi-agent-doorkeeper-admin
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-doorkeeper
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+---
+# Grant cluster-scoped bootstrap privileges so the worker can create ServiceAccounts, Roles, and RoleBindings
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pi-agent-worker-default-bootstrap
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["create"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles","rolebindings","clusterroles","clusterrolebindings"]
+    verbs: ["create"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get","list","watch","create","update","patch","delete"]
+  - apiGroups: ["apiregistration.k8s.io"]
+    resources: ["apiservices"]
+    verbs: ["get","list","watch"]
+  - nonResourceURLs: ["/api","/api/*","/apis","/apis/*","/openapi","/openapi/*"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pi-agent-worker-default-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-worker
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pi-agent-worker-default-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pi-agent-doorkeeper-default-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: pi-agent-doorkeeper
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pi-agent-worker-default-bootstrap
+
